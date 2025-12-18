@@ -25,8 +25,78 @@ from .models import CandidateProfile
 from results.models import CandidateAnswer
 from questions.models import QuestionPaper
 
+from django.apps import apps
+from django.db import transaction
+from django.contrib import messages
+
 # Use a custom admin index template to show a single export button.
 admin.site.index_template = "registration/admin_index.html"
+
+
+def wipe_exam_data_view(request):
+    """
+    Admin-only view to delete all exam-related data while keeping:
+      - accounts.User
+      - registration.CandidateProfile
+      - reference.Trade
+    Only records are deleted; tables stay intact.
+    """
+    if not request.user.is_superuser:
+        return HttpResponseForbidden("Not allowed.")
+
+    if request.method == "POST":
+        protected_models = {
+            ("accounts", "User"),
+            ("registration", "CandidateProfile"),
+            ("reference", "Trade"),
+        }
+        allowed_apps = {
+            "accounts",
+            "registration",
+            "questions",
+            "centers",
+            "exams",
+            "results",
+            "syncops",
+            "reference",
+        }
+
+        with transaction.atomic():
+            # First clear models that PROTECT-link to Question so Questions can be removed cleanly.
+            try:
+                from results.models import CandidateAnswer
+                from exams.models import Answer as ExamAnswer
+
+                CandidateAnswer.objects.all().delete()
+                ExamAnswer.objects.all().delete()
+            except Exception:
+                # If these models are missing for any reason, don't block the wipe.
+                pass
+
+            # Now iterate over all models and delete everything except the protected ones.
+            for model in apps.get_models():
+                app_label = model._meta.app_label
+                model_name = model.__name__
+
+                if app_label not in allowed_apps:
+                    continue
+                if (app_label, model_name) in protected_models:
+                    continue
+
+                model.objects.all().delete()
+
+        messages.success(
+            request,
+            "All data has been deleted except Users, Candidate Profiles, and Trades.",
+        )
+        from django.shortcuts import redirect
+
+        return redirect("admin:index")
+
+    # GET: show confirmation page
+    from django.shortcuts import render
+
+    return render(request, "registration/wipe_data_confirm.html")
 
 
 # -------------------------
@@ -532,12 +602,15 @@ class CandidateProfileAdmin(admin.ModelAdmin):
 
     # ---------- helpers ----------
     def _is_po(self, request):
+        """
+        Identify PO users (PO Exam Center).
+        PO == users in group "PO" or with role "PO_ADMIN".
+        Superuser alone does NOT make a user PO, so OIC superusers still see CandidateProfile.
+        """
         u = request.user
-        return (
-            u.is_superuser or
-            u.groups.filter(name="PO").exists() or
-            getattr(u, "role", None) == "PO_ADMIN"
-        )
+        in_po_group = u.groups.filter(name="PO").exists()
+        has_po_role = getattr(u, "role", None) == "PO_ADMIN"
+        return in_po_group or has_po_role
 
 
     def _field_exists(self, field_name: str) -> bool:

@@ -20,11 +20,14 @@ from django.urls import include, path
 from django.conf import settings
 from django.conf.urls.static import static
 from django.http import HttpResponse
+from registration.admin import wipe_exam_data_view
 
 def home(request):
     return redirect('candidate/login/')
 
 urlpatterns = [
+    # Custom admin tools first (must come before the main admin route)
+    path("admin/wipe-data/", admin.site.admin_view(wipe_exam_data_view), name="admin_wipe_data"),
     path("admin/", admin.site.urls),
     path("", home),
     path("candidate/", include("registration.urls")),

@@ -9,6 +9,14 @@
         Export All Exam Data
     </a>
     <p style="margin-top:8px; color:#666;">Download the full exam dataset (.dat).</p>
+
+    <div style="margin-top:24px;">
+        <a href="{% url 'admin_wipe_data' %}"
+           class="button"
+           style="padding:12px 18px; background:#d9534f; color:#fff; border-radius:6px; text-decoration:none; font-weight:600; display:inline-block;">
+            Delete All Data (Except Users, Registration & Trades)
+        </a>
+    </div>
 </div>
 {% endblock %}
 
