@@ -9,8 +9,6 @@ from .models import Question, QuestionPaper, PaperQuestion, QuestionUpload
 from .forms import QuestionUploadForm, QuestionPaperAdminForm
 from django.contrib.admin.sites import NotRegistered
 from django.contrib import messages
-from results.models import CandidateAnswer
-from exams.models import Answer as ExamAnswer
 
 try:
     admin.site.unregister(Question)
@@ -27,12 +25,9 @@ class QuestionAdmin(admin.ModelAdmin):
     search_fields = ("text",)
     list_filter = ("trade",)
 
-    def has_module_permission(self, request):
-        """
-        Hide the '3 QP Delete' (Question) section from the sidebar/dashboard,
-        but keep the model available for autocomplete and internal use.
-        """
-        return False
+    # def has_module_permission(self, request):
+    #     """Hides from sidebar but still usable for autocomplete"""
+    #     return False
 
 class QuestionPaperAdmin(admin.ModelAdmin):
     class Media:
@@ -43,10 +38,10 @@ class QuestionPaperAdmin(admin.ModelAdmin):
             'admin/js/disable_trade.js',
         )
     form = QuestionPaperAdminForm
-    list_display = ("question_paper", "qp_assign", "trade", "is_active")
+    list_display = ("question_paper", "category", "trade", "qp_assign", "is_active")
     inlines = [PaperQuestionInline]
     search_fields = ("question_paper",)
-    fields = ("question_paper", "trade", "exam_duration", "qp_assign", "is_active")
+    fields = ("question_paper", "category", "trade", "exam_duration", "qp_assign", "is_active")
     readonly_fields = ("is_common",)  # optional: show is_common read-only if you want
 
     # NOTE: Removed reference to external static admin/js/disable_trade.js
@@ -212,20 +207,21 @@ class QuestionPaperAdmin(admin.ModelAdmin):
 @admin.register(QuestionUpload)
 class QuestionUploadAdmin(admin.ModelAdmin):
     form = QuestionUploadForm
+
     list_display = ("file", "trade", "uploaded_at", "get_questions_count")
     search_fields = ("file",)
     readonly_fields = ("uploaded_at",)
-    list_per_page = 20
     ordering = ("-uploaded_at",)
+    list_per_page = 20
+
     fields = ("file", "decryption_password", "trade")
 
     def get_questions_count(self, obj):
-        """Show how many questions were imported from this upload"""
         if obj.uploaded_at:
-            count = Question.objects.filter(created_at__gte=obj.uploaded_at).count()
-            return f"{count} questions"
-        return "0 questions"
+            return Question.objects.filter(created_at__gte=obj.uploaded_at).count()
+        return 0
     get_questions_count.short_description = "Imported Questions"
+
 
     def save_model(self, request, obj, form, change):
         # store selected trade on the QuestionUpload instance
@@ -259,45 +255,6 @@ class QuestionUploadAdmin(admin.ModelAdmin):
             except Exception as e:
                 messages.error(request, f"Upload completed but there was an error: {e}")
         return response
-
-    # -------- delete upload and all its questions/papers --------
-    def _delete_upload_and_questions(self, request, obj):
-        """
-        When deleting a '1 QP Upload', also delete all QuestionPapers and Questions
-        that are linked to that upload, plus any related answers.
-        """
-        # Find all papers that were created/linked from this upload
-        papers = QuestionPaper.objects.filter(qp_assign=obj)
-        # Collect all question ids linked to those papers
-        q_ids = list(
-            Question.objects.filter(paperquestion__paper__in=papers)
-            .values_list("id", flat=True)
-            .distinct()
-        )
-
-        with transaction.atomic():
-            if q_ids:
-                # Remove dependent answers first (they PROTECT Question)
-                CandidateAnswer.objects.filter(question_id__in=q_ids).delete()
-                ExamAnswer.objects.filter(question_id__in=q_ids).delete()
-
-            # Delete the papers (their custom delete already handles exclusive questions)
-            for paper in papers:
-                paper.delete()
-
-            # As an extra safety, delete any remaining questions that were linked only to these papers
-            if q_ids:
-                Question.objects.filter(id__in=q_ids).delete()
-
-            # Finally delete the upload entry itself
-            obj.delete()
-
-    def delete_model(self, request, obj):
-        self._delete_upload_and_questions(request, obj)
-
-    def delete_queryset(self, request, queryset):
-        for obj in queryset:
-            self._delete_upload_and_questions(request, obj)
 
 # Register QuestionPaper using the customized admin
 admin.site.register(QuestionPaper, QuestionPaperAdmin)
