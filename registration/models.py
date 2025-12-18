@@ -1,4 +1,9 @@
+# models.py
 from django.db import models
+from django.conf import settings
+from django.utils import timezone
+from django.core.exceptions import ValidationError
+from datetime import datetime
 
 RANK_CHOICES = [
     ('Sigmn', 'Sigmn'),
@@ -11,8 +16,6 @@ RANK_CHOICES = [
     ('Nb Sub', 'Nb Sub'),
     ('Sub', 'Sub'),
     ('Sub Maj', 'Sub Maj'),
-
-    # ✅ Newly added ranks
     ('L|Hav', 'L|Hav'),
     ('AV', 'AV'),
     ('Loc Hav', 'Loc Hav'),
@@ -21,7 +24,7 @@ RANK_CHOICES = [
 
 TRADE_TYPE_CHOICES = [
     ('Tech', 'Tech'),
-    ('Non-Tech', 'Non-Tech'),   # ✅ Label changed only
+    ('Non-Tech', 'Non-Tech'),
 ]
 
 CAT_CHOICES = [
@@ -30,10 +33,6 @@ CAT_CHOICES = [
     ('JCOs/OR (Dvr MT,DR,EFS,Lmn and Tdn)', 'JCOs/OR (Dvr MT,DR,EFS,Lmn and Tdn)'),
 ]
 
-from django.conf import settings
-from django.utils import timezone
-from django.core.exceptions import ValidationError
-from datetime import datetime
 from exams.models import Shift
 
 class CandidateProfile(models.Model):
@@ -71,19 +70,12 @@ class CandidateProfile(models.Model):
     state = models.CharField(max_length=100, blank=True, null=True)
     district = models.CharField(max_length=100, blank=True, null=True)
 
-
     primary_qualification = models.CharField(max_length=150, blank=True, null=True)
     primary_duration = models.CharField(max_length=50, blank=True, null=True)
     primary_credits = models.CharField(max_length=50, blank=True, null=True)
 
-    secondary_qualification = models.CharField(max_length=150, blank=True, null=True)
-    secondary_duration = models.CharField(max_length=50, blank=True, null=True)
-    secondary_credits = models.CharField(max_length=50, blank=True, null=True)
-
     primary_viva_marks = models.IntegerField(null=True, blank=True)
     primary_practical_marks = models.IntegerField(null=True, blank=True)
-    secondary_viva_marks = models.IntegerField(null=True, blank=True)
-    secondary_practical_marks = models.IntegerField(null=True, blank=True)
     shift = models.ForeignKey(Shift, on_delete=models.PROTECT, null=True, blank=True)
 
     created_at = models.DateTimeField(auto_now_add=True)
@@ -106,8 +98,6 @@ class CandidateProfile(models.Model):
         "ARTSN WW": {'primary': {'prac': 30, 'viva': 10}},
         "HAIR DRESSER": {'primary': {'prac': 30, 'viva': 10}},
         "SP STAFF": {'primary': {'prac': 30, 'viva': 10}},
-
-        # ✅ Newly added trades
         "JE NE": {'primary': {'prac': 30, 'viva': 10}},
         "JE SYS": {'primary': {'prac': 30, 'viva': 10}},
         "OP CIPH": {'primary': {'prac': 30, 'viva': 10}},
@@ -161,23 +151,11 @@ class CandidateProfile(models.Model):
         if primary_viva_max is not None and self.primary_viva_marks is not None and self.primary_viva_marks > primary_viva_max:
             raise ValidationError({"primary_viva_marks": f"Primary viva marks cannot exceed {primary_viva_max} for {self.trade} trade."})
 
-        if secondary_prac_max is not None and self.secondary_practical_marks is not None and self.secondary_practical_marks > secondary_prac_max:
-            raise ValidationError({"secondary_practical_marks": f"Secondary practical marks cannot exceed {secondary_prac_max} for {self.trade} trade."})
-
-        if secondary_viva_max is not None and self.secondary_viva_marks is not None and self.secondary_viva_marks > secondary_viva_max:
-            raise ValidationError({"secondary_viva_marks": f"Secondary viva marks cannot exceed {secondary_viva_max} for {self.trade} trade."})
-
         if self.primary_practical_marks is not None and self.primary_practical_marks < 0:
             raise ValidationError({"primary_practical_marks": "Marks cannot be negative."})
 
         if self.primary_viva_marks is not None and self.primary_viva_marks < 0:
             raise ValidationError({"primary_viva_marks": "Marks cannot be negative."})
-
-        if self.secondary_practical_marks is not None and self.secondary_practical_marks < 0:
-            raise ValidationError({"secondary_practical_marks": "Marks cannot be negative."})
-
-        if self.secondary_viva_marks is not None and self.secondary_viva_marks < 0:
-            raise ValidationError({"secondary_viva_marks": "Marks cannot be negative."})
 
     @property
     def can_start_exam(self):
