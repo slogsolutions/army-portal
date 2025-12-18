@@ -122,16 +122,57 @@ class QuestionPaper(models.Model):
         super().save(*args, **kwargs)
 
     def delete(self, *args, **kwargs):
-        from .models import PaperQuestion, Question  # local import to avoid circular import
-        q_ids = list(PaperQuestion.objects.filter(paper=self).values_list("question_id", flat=True).distinct())
-        for qid in q_ids:
-            other_rel_count = PaperQuestion.objects.filter(question_id=qid).exclude(paper=self).count()
-            if other_rel_count == 0:
-                try:
-                    Question.objects.filter(id=qid).delete()
-                except Exception:
-                    pass
-        super().delete(*args, **kwargs)
+        """
+        When a QuestionPaper is deleted, remove ALL related data for its questions:
+          - all answers (results_candidateanswer, exams_answer)
+          - all exam sessions / exam questions for this paper
+          - all PaperQuestion mappings
+          - all Question rows in questions_question for this paper
+        """
+        from .models import PaperQuestion, Question, ExamSession  # local import
+        from results.models import CandidateAnswer
+        from exams.models import Answer as ExamAnswer, ExamAssignment, ExamAttempt
+        from django.db.models import Q
+
+        # IDs of all questions attached to this paper (via mapping) OR belonging to this paper's trade.
+        mapped_q_ids = list(
+            PaperQuestion.objects.filter(paper=self)
+            .values_list("question_id", flat=True)
+            .distinct()
+        )
+        trade_q_ids = []
+        if self.trade_id:
+            trade_q_ids = list(
+                Question.objects.filter(trade_id=self.trade_id)
+                .values_list("id", flat=True)
+            )
+
+        q_ids = list({*mapped_q_ids, *trade_q_ids})
+
+        with transaction.atomic():
+            if q_ids:
+                # 1) Remove dependent answers that PROTECT Question
+                CandidateAnswer.objects.filter(question_id__in=q_ids).delete()
+                ExamAnswer.objects.filter(question_id__in=q_ids).delete()
+
+            # 2) Remove exam assignments/attempts that point to this paper
+            assignments = ExamAssignment.objects.filter(
+                Q(primary_paper=self) | Q(common_paper=self)
+            )
+            if assignments.exists():
+                ExamAttempt.objects.filter(assignment__in=assignments).delete()
+                assignments.delete()
+
+            # 3) Remove exam sessions (and their ExamQuestions via CASCADE)
+            ExamSession.objects.filter(paper=self).delete()
+
+            # 4) Remove PaperQuestion mappings and the actual questions
+            if q_ids:
+                PaperQuestion.objects.filter(paper=self).delete()
+                Question.objects.filter(id__in=q_ids).delete()
+
+            # 5) Finally delete the paper record itself
+            super().delete(*args, **kwargs)
 
     def __str__(self):
         return self.question_paper
