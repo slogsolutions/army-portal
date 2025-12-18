@@ -26,7 +26,7 @@ from results.models import CandidateAnswer
 from questions.models import QuestionPaper
 
 # Use a custom admin index template to show a single export button.
-admin.site.index_template = "registration/admin_index.html"
+# admin.site.index_template = "registration/admin_index.html"
 
 
 # -------------------------
