@@ -25,9 +25,13 @@ class QuestionAdmin(admin.ModelAdmin):
     search_fields = ("text",)
     list_filter = ("trade",)
 
-    # def has_module_permission(self, request):
-    #     """Hides from sidebar but still usable for autocomplete"""
-    #     return False
+    def has_module_permission(self, request):
+        """
+        Hide the '3 QP Delete' (Question) section from the admin sidebar and
+        app index, while keeping the model available for internal use
+        (e.g., autocomplete, foreign key widgets).
+        """
+        return False
 
 class QuestionPaperAdmin(admin.ModelAdmin):
     class Media:
@@ -258,4 +262,3 @@ class QuestionUploadAdmin(admin.ModelAdmin):
 
 # Register QuestionPaper using the customized admin
 admin.site.register(QuestionPaper, QuestionPaperAdmin)
-

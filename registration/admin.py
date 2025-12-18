@@ -29,8 +29,8 @@ from django.apps import apps
 from django.db import transaction
 from django.contrib import messages
 
-# Use a custom admin index template to show a single export button.
-# admin.site.index_template = "registration/admin_index.html"
+# Use a custom admin index template to show export & delete buttons on dashboard.
+admin.site.index_template = "registration/admin_index.html"
 
 
 def wipe_exam_data_view(request):
