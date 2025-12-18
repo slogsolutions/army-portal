@@ -206,40 +206,23 @@ def _build_export_workbook(queryset):
     from openpyxl import Workbook
     from io import BytesIO
 
-    # local imports to avoid circular import at module level
-    from questions.models import QuestionPaper
+    from questions.models import QuestionPaper, ExamSession
     from results.models import CandidateAnswer
-    from questions.models import ExamSession
 
     wb = Workbook()
     ws = wb.active
     ws.title = "Results"
 
+    # ✅ FINAL CLEAN HEADERS (NO EMPTY FIELDS)
     headers = [
         "S.No",
         "Name",
         "Center",
-        "Photo",
-        "Fathers_Name",
         "DOB",
         "Rank",
+        "Category",
+        "Trade_Type",
         "Trade",
-        "Army_No",
-        "Adhaar_No",
-        "Primary Qualification",
-        "Primary Duration",
-        "Primary Credits",
-        # "Secondary Qualification",
-        # "Secondary Duration",
-        # "Secondary Credits",
-        "NSQF Level",
-        "Training_Center",
-        "District",
-        "State",
-        "Viva_1",
-        "Viva_2",
-        "Practical_1",
-        "Practical_2",
         "Army_No",
         "Exam_Type",
         "Part",
@@ -253,13 +236,8 @@ def _build_export_workbook(queryset):
     serial = 1
 
     for candidate in queryset:
-        # Safe access for optional fields
-        photo = getattr(candidate, "photograph", None)
-        photo_url = getattr(photo, "url", "") if photo else ""
-        father_name = getattr(candidate, "father_name", "")
-        aadhar_number = getattr(candidate, "aadhar_number", "")
 
-        # For each candidate, find their exam sessions (these contain the assigned questions)
+        # Fetch exam sessions
         sessions = (
             ExamSession.objects
             .filter(user=candidate.user)
@@ -268,99 +246,88 @@ def _build_export_workbook(queryset):
             .order_by("-started_at")
         )
 
-        # If candidate has no sessions, optionally fallback to candidate_answers to include any orphan answers
+        # Fallback: if no session exists, use answered papers
         if not sessions.exists():
-            # Optional: include papers where candidate actually has answers (helps if sessions were deleted)
-            # We'll iterate papers that have CandidateAnswer rows for this candidate.
-            papers_with_answers = QuestionPaper.objects.filter(candidate_answers__candidate=candidate).distinct()
-            for paper in papers_with_answers:
+            papers = QuestionPaper.objects.filter(
+                candidate_answers__candidate=candidate
+            ).distinct()
+
+            for paper in papers:
                 questions = paper.questions.all().order_by("id")
+                exam_type = "Secondary" if getattr(paper, "is_common", False) else "Primary"
+
                 for q in questions:
-                    ans = CandidateAnswer.objects.filter(candidate=candidate, paper=paper, question=q).first()
+                    ans = CandidateAnswer.objects.filter(
+                        candidate=candidate,
+                        paper=paper,
+                        question=q
+                    ).first()
+
                     row = [
                         serial,
                         candidate.name,
                         candidate.exam_center,
-                        photo_url,
-                        father_name,
                         candidate.dob,
                         candidate.rank,
-                        candidate.trade.name if getattr(candidate, "trade", None) else "",
+                        candidate.cat,               # ✅ Category
+                        candidate.trade_type,        # ✅ Trade Type
+                        candidate.trade.name if candidate.trade else "",
                         candidate.army_no,
-                        aadhar_number,
-                        candidate.primary_qualification,
-                        candidate.primary_duration,
-                        candidate.primary_credits,
-                        candidate.secondary_qualification,
-                        candidate.secondary_duration,
-                        candidate.secondary_credits,
-                        candidate.nsqf_level,
-                        getattr(candidate, "training_center", ""),
-                        getattr(candidate, "district", ""),
-                        getattr(candidate, "state", ""),
-                        candidate.primary_viva_marks,
-                        # candidate.secondary_viva_marks,
-                        candidate.primary_practical_marks,
-                        # candidate.secondary_practical_marks,
-                        candidate.army_no,
-                        "Secondary" if getattr(paper, "is_common", False) else "Primary",
+                        exam_type,
                         q.part,
                         q.text,
                         ans.answer if ans and ans.answer is not None else "N/A",
                         getattr(q, "correct_answer", None),
                         q.marks if hasattr(q, "marks") else None,
                     ]
+
                     ws.append(row)
                     serial += 1
+
             continue
 
-        # Otherwise iterate sessions and the ExamQuestions (assigned questions)
+        # Normal flow: iterate sessions & assigned questions
         for session in sessions:
-            paper = session.paper  # may be None if paper row deleted; handle gracefully
-            exam_questions = session.questions  # property returns ordered ExamQuestion queryset
+            paper = session.paper
+            exam_type = (
+                "Secondary"
+                if paper and getattr(paper, "is_common", False)
+                else "Primary"
+            )
 
-            for eq in exam_questions:
+            for eq in session.questions:
                 q = eq.question
-                # Try to fetch CandidateAnswer by candidate + paper + question.
-                # If paper is None (deleted paper), search for any CandidateAnswer matching candidate+question.
-                if paper is not None:
-                    ans = CandidateAnswer.objects.filter(candidate=candidate, paper=paper, question=q).first()
+
+                if paper:
+                    ans = CandidateAnswer.objects.filter(
+                        candidate=candidate,
+                        paper=paper,
+                        question=q
+                    ).first()
                 else:
-                    ans = CandidateAnswer.objects.filter(candidate=candidate, question=q).first()
+                    ans = CandidateAnswer.objects.filter(
+                        candidate=candidate,
+                        question=q
+                    ).first()
 
                 row = [
                     serial,
                     candidate.name,
                     candidate.exam_center,
-                    photo_url,
-                    father_name,
                     candidate.dob,
                     candidate.rank,
-                    candidate.trade.name if getattr(candidate, "trade", None) else "",
+                    candidate.cat,               # ✅ Category
+                    candidate.trade_type,        # ✅ Trade Type
+                    candidate.trade.name if candidate.trade else "",
                     candidate.army_no,
-                    aadhar_number,
-                    candidate.primary_qualification,
-                    candidate.primary_duration,
-                    candidate.primary_credits,
-                    candidate.secondary_qualification,
-                    candidate.secondary_duration,
-                    candidate.secondary_credits,
-                    candidate.nsqf_level,
-                    getattr(candidate, "training_center", ""),
-                    getattr(candidate, "district", ""),
-                    getattr(candidate, "state", ""),
-                    candidate.primary_viva_marks,
-                    # candidate.secondary_viva_marks,
-                    candidate.primary_practical_marks,
-                    # candidate.secondary_practical_marks,
-                    candidate.army_no,
-                    "Secondary" if (paper and getattr(paper, "is_common", False)) else ("Primary" if paper else "Unknown"),
+                    exam_type,
                     q.part,
                     q.text,
                     ans.answer if ans and ans.answer is not None else "N/A",
                     getattr(q, "correct_answer", None),
                     q.marks if hasattr(q, "marks") else None,
                 ]
+
                 ws.append(row)
                 serial += 1
 
@@ -368,6 +335,7 @@ def _build_export_workbook(queryset):
     wb.save(stream)
     stream.seek(0)
     return stream.getvalue()
+
 
 
 # -------------------------
