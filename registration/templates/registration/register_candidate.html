@@ -125,9 +125,9 @@
       left: 0;
       width: 100%;
       display: flex;
-      justify-content: space-between; /* pushes left & right */
+      justify-content: space-between;
       align-items: center;
-      padding: 0 20px; /* some breathing space from edges */
+      padding: 0 20px;
       box-sizing: border-box;
     }
     .footer-note {
@@ -188,7 +188,11 @@
           <div class="section-header">Personal Details</div>
         </div>
 
-        <div><label>Army No (USERNAME) *</label><input type="text" name="army_no" required {% if form.army_no.errors %}class="invalid"{% endif %} value="{{ form.army_no.value|default:'' }}" /><div class="field-error" id="error-army_no">{% for error in form.army_no.errors %}{{ error }}<br>{% endfor %}</div></div>
+        <div>
+          <label>Army No (USERNAME) *</label>
+          <input type="text" name="army_no" required {% if form.army_no.errors %}class="invalid"{% endif %} value="{{ form.army_no.value|default:'' }}" />
+          <div class="field-error" id="error-army_no">{% for error in form.army_no.errors %}{{ error }}<br>{% endfor %}</div>
+        </div>
         
         <div>
           <label for="id_rank">Rank *</label>
@@ -201,7 +205,22 @@
           <div class="field-error" id="error-rank">{% for error in form.rank.errors %}{{ error }}<br>{% endfor %}</div>
         </div>
 
-        <div><label>Name *</label><input type="text" name="name" required {% if form.name.errors %}class="invalid"{% endif %} value="{{ form.name.value|default:'' }}" /><div class="field-error" id="error-name">{% for error in form.name.errors %}{{ error }}<br>{% endfor %}</div></div>
+        <div>
+          <label>Name *</label>
+          <input type="text" name="name" required {% if form.name.errors %}class="invalid"{% endif %} value="{{ form.name.value|default:'' }}" />
+          <div class="field-error" id="error-name">{% for error in form.name.errors %}{{ error }}<br>{% endfor %}</div>
+        </div>
+
+        <div>
+          <label for="id_cat">Category *</label>
+          <select name="cat" id="id_cat" required {% if form.cat.errors %}class="invalid"{% endif %}>
+            <option value="">-- Select Category --</option>
+            {% for value, label in form.fields.cat.choices %}
+              <option value="{{ value }}" {% if form.cat.value == value %}selected{% endif %}>{{ label }}</option>
+            {% endfor %}
+          </select>
+          <div class="field-error" id="error-cat">{% for error in form.cat.errors %}{{ error }}<br>{% endfor %}</div>
+        </div>
 
         <div>
           <label for="id_trade_type">Trade Type *</label>
@@ -225,23 +244,28 @@
           <div class="field-error" id="error-trade">{% for error in form.trade.errors %}{{ error }}<br>{% endfor %}</div>
         </div>
 
-        <div><label>Date of Birth (PASSWORD dd-mm-yyyy) *</label><input type="text" name="dob" required {% if form.dob.errors %}class="invalid"{% endif %} value="{{ form.dob.value|default:'' }}" /><div class="field-error" id="error-dob">{% for error in form.dob.errors %}{{ error }}<br>{% endfor %}</div></div>
+        <div>
+          <label>Date of Birth (PASSWORD dd-mm-yyyy) *</label>
+          <input type="text" name="dob" placeholder="dd-mm-yyyy" required {% if form.dob.errors %}class="invalid"{% endif %} value="{{ form.dob.value|default:'' }}" />
+          <div class="field-error" id="error-dob">{% for error in form.dob.errors %}{{ error }}<br>{% endfor %}</div>
+        </div>
         
-        <div><label>Date of Enrollment *</label><input type="date" name="doe" required {% if form.doe.errors %}class="invalid"{% endif %} value="{{ form.doe.value|default:''|date:'Y-m-d' }}" /><div class="field-error" id="error-doe">{% for error in form.doe.errors %}{{ error }}<br>{% endfor %}</div></div>
+        <div>
+          <label>Date of Enrollment *</label>
+          <input type="date" name="doe" required {% if form.doe.errors %}class="invalid"{% endif %} value="{{ form.doe.value|default:''|date:'Y-m-d' }}" />
+          <div class="field-error" id="error-doe">{% for error in form.doe.errors %}{{ error }}<br>{% endfor %}</div>
+        </div>
         
-        <div><label>Unit *</label><input type="text" name="unit" required {% if form.unit.errors %}class="invalid"{% endif %} value="{{ form.unit.value|default:'' }}" /><div class="field-error" id="error-unit">{% for error in form.unit.errors %}{{ error }}<br>{% endfor %}</div></div>
-
-        <div><label>Medical Category *</label><input type="text" name="med_cat" required {% if form.med_cat.errors %}class="invalid"{% endif %} value="{{ form.med_cat.value|default:'' }}" /><div class="field-error" id="error-med_cat">{% for error in form.med_cat.errors %}{{ error }}<br>{% endfor %}</div></div>
+        <div>
+          <label>Unit *</label>
+          <input type="text" name="unit" required {% if form.unit.errors %}class="invalid"{% endif %} value="{{ form.unit.value|default:'' }}" />
+          <div class="field-error" id="error-unit">{% for error in form.unit.errors %}{{ error }}<br>{% endfor %}</div>
+        </div>
 
         <div>
-          <label for="id_cat">Category *</label>
-          <select name="cat" id="id_cat" required {% if form.cat.errors %}class="invalid"{% endif %}>
-            <option value="">-- Select Category --</option>
-            {% for value, label in form.fields.cat.choices %}
-              <option value="{{ value }}" {% if form.cat.value == value %}selected{% endif %}>{{ label }}</option>
-            {% endfor %}
-          </select>
-          <div class="field-error" id="error-cat">{% for error in form.cat.errors %}{{ error }}<br>{% endfor %}</div>
+          <label>Medical Category *</label>
+          <input type="text" name="med_cat" required {% if form.med_cat.errors %}class="invalid"{% endif %} value="{{ form.med_cat.value|default:'' }}" />
+          <div class="field-error" id="error-med_cat">{% for error in form.med_cat.errors %}{{ error }}<br>{% endfor %}</div>
         </div>
 
         <div>
@@ -259,8 +283,6 @@
         <div class="grid-1" style="grid-column:1/-1;margin-top:20px;">
           <div class="section-header">Exam Details</div>
         </div>
-
-
 
         <div class="grid-1" style="grid-column:1/-1;">
           <label>Exam Center *</label>
@@ -293,9 +315,6 @@
           <div class="field-error" id="error-exam_center">{% for error in form.exam_center.errors %}{{ error }}<br>{% endfor %}</div>
         </div>
 
-
-
-
       </div>
 
       <div class="actions">
@@ -314,51 +333,103 @@
   </div>
 
 <script>
-  // ===== Trade mapping (moved to top for priority) =====
+  // ===== STRICT TRADE RULES =====
+  // JCO (All tdes less Dvr MT,DR,EFS,Lmn and Tdn) → TECH → 6 trades only
+  // OR (All tdes less Dvr MT,DR,EFS,Lmn and Tdn) → TECH → same 6 trades
+  // JCOs/OR (Dvr MT,DR,EFS,Lmn and Tdn) → NON-TECH → all other trades
+
+  const JCO_OR_TECH_TRADES = ["TTC", "OCC", "DTMN", "JE NE", "JE SYS", "OP CIPH"];
+  const JCO_OR_NON_TECH_TRADES = ["EFS", "DMV", "LMN", "CLK SD", "STEWARD", "WASHERMAN", "HOUSE KEEPER", "CHEFCOM", "MESS KEEPER", "SKT", "MUSICIAN", "ARTSN WW", "HAIR DRESSER", "SP STAFF", "OSS"];
+
   const tradeMapping = {
-  "TTC": { primary:{qualification:"Technician Data Network",duration:"1200",credits:"40"} },
-  "OCC": { primary:{qualification:"Technician Communication Center & Radio System",duration:"1200",credits:"40"} },
-  "DTMN": { primary:{qualification:"Technician Draughtsman Topographical",duration:"1200",credits:"40"} },
-  "EFS": { primary:{qualification:"Technician Electrical System",duration:"1200",credits:"40"} },
-  "DMV": { primary:{qualification:"Commercial Vehicle Driver (Heavy Motor Veh Driver) Light Motor Veh Driver",duration:"1350",credits:"45"} },
-  "LMN": { primary:{qualification:"Technician Network System Support",duration:"1200",credits:"40"} },
-  "CLK SD": { primary:{qualification:"Office Supervisor",duration:"1260",credits:"42"} },
-  "STEWARD": { primary:{qualification:"Food & Beverage Service Associatesociate",duration:"1350",credits:"45"} },
-  "WASHERMAN": { primary:{qualification:"Laundry Associate",duration:"1350",credits:"45"} },
-  "HOUSE KEEPER": { primary:{qualification:"Housekeeping Support Staff",duration:"1200",credits:"40"} },
-  "CHEFCOM": { primary:{qualification:"Commis Chef (Advanced)",duration:"1200",credits:"40"} },
-  "MESS KEEPER": { primary:{qualification:"Camp Coordinator",duration:"1350",credits:"45"} },
-  "SKT": { primary:{qualification:"Store Keeper Technician",duration:"1350",credits:"45"} },
-  "Musician": { primary:{qualification:"Music Performer",duration:"1200",credits:"40"} },
-  "ARTSN WW": { primary:{qualification:"Technician Wood Works",duration:"1350",credits:"45"} },
-  "Hair Dresser": { primary:{qualification:"N/A",duration:"N/A",credits:"N/A"} },
-  "SP Staff": { primary:{qualification:"N/A",duration:"N/A",credits:"N/A"} },
+    "TTC": { primary:{qualification:"Technician Data Network",duration:"1200",credits:"40"} },
+    "OCC": { primary:{qualification:"Technician Communication Center & Radio System",duration:"1200",credits:"40"} },
+    "DTMN": { primary:{qualification:"Technician Draughtsman Topographical",duration:"1200",credits:"40"} },
+    "EFS": { primary:{qualification:"Technician Electrical System",duration:"1200",credits:"40"} },
+    "DMV": { primary:{qualification:"Commercial Vehicle Driver (Heavy Motor Veh Driver) Light Motor Veh Driver",duration:"1350",credits:"45"} },
+    "LMN": { primary:{qualification:"Technician Network System Support",duration:"1200",credits:"40"} },
+    "CLK SD": { primary:{qualification:"Office Supervisor",duration:"1260",credits:"42"} },
+    "STEWARD": { primary:{qualification:"Food & Beverage Service Associate",duration:"1350",credits:"45"} },
+    "WASHERMAN": { primary:{qualification:"Laundry Associate",duration:"1350",credits:"45"} },
+    "HOUSE KEEPER": { primary:{qualification:"Housekeeping Support Staff",duration:"1200",credits:"40"} },
+    "CHEFCOM": { primary:{qualification:"Commis Chef (Advanced)",duration:"1200",credits:"40"} },
+    "MESS KEEPER": { primary:{qualification:"Camp Coordinator",duration:"1350",credits:"45"} },
+    "SKT": { primary:{qualification:"Store Keeper Technician",duration:"1350",credits:"45"} },
+    "MUSICIAN": { primary:{qualification:"Music Performer",duration:"1200",credits:"40"} },
+    "ARTSN WW": { primary:{qualification:"Technician Wood Works",duration:"1350",credits:"45"} },
+    "HAIR DRESSER": { primary:{qualification:"N/A",duration:"N/A",credits:"N/A"} },
+    "SP STAFF": { primary:{qualification:"N/A",duration:"N/A",credits:"N/A"} },
+    "JE NE": { primary:{qualification:"Junior Engineer Network",duration:"1200",credits:"40"} },
+    "JE SYS": { primary:{qualification:"Junior Engineer Systems",duration:"1200",credits:"40"} },
+    "OP CIPH": { primary:{qualification:"Operator Cipher",duration:"1200",credits:"40"} },
+    "OSS": { primary:{qualification:"OSS",duration:"1200",credits:"40"} }
+  };
 
-  // ✅ Newly added trades
-  "JE NE": { primary:{qualification:"Junior Engineer Network",duration:"1200",credits:"40"} },
-  "JE SYS": { primary:{qualification:"Junior Engineer Systems",duration:"1200",credits:"40"} },
-  "OP CIPH": { primary:{qualification:"Operator Cipher",duration:"1200",credits:"40"} },
-  "OSS": { primary:{qualification:"OSS",duration:"1200",credits:"40"} }
-};
-
-  // ===== Get all elements =====
+  // Get all elements
+  const catSelect = document.getElementById("id_cat");
+  const tradeTypeSelect = document.getElementById("id_trade_type");
   const tradeSelect = document.getElementById("trade");
-
-
-  // Form elements
   const armyNoInput = document.querySelector('input[name="army_no"]');
   const dobInput = document.querySelector('input[name="dob"]');
   const usernameHidden = document.getElementById('username_hidden');
   const passwordHidden = document.getElementById('password_hidden');
 
-  // ===== Trade mapping function =====
-  function applyTradeMapping() {
-    const selectedOption = tradeSelect.options[tradeSelect.selectedIndex];
-    const tradeCode = selectedOption ? selectedOption.dataset.code : "";
-    const data = tradeMapping[tradeCode];
+  // Store all trade options
+  const allTradeOptions = [];
+  Array.from(tradeSelect.options).forEach(opt => {
+    if (opt.value) {
+      allTradeOptions.push({
+        value: opt.value,
+        code: opt.dataset.code,
+        text: opt.textContent
+      });
+    }
+  });
 
-    // Update buttons after trade mapping to ensure validation runs properly
-    setTimeout(updateButtons, 100);
+  // ===== FILTER TRADES BASED ON CATEGORY + TRADE TYPE =====
+  function filterTrades() {
+    const cat = catSelect.value;
+    const tradeType = tradeTypeSelect.value;
+
+    // Clear current trade options except placeholder
+    tradeSelect.innerHTML = '<option value="">-- Select Trade --</option>';
+
+    if (!cat || !tradeType) {
+      updateButtons();
+      return;
+    }
+
+    let allowedTradeCodes = [];
+
+    // Determine allowed trades based on category and trade type
+    if (cat === "JCOs (All tdes less Dvr MT,DR,EFS,Lmn and Tdn)" || cat === "OR (All tdes less Dvr MT,DR,EFS,Lmn and Tdn)") {
+      if (tradeType === "Tech") {
+        allowedTradeCodes = JCO_OR_TECH_TRADES;
+      } else {
+        // Non-Tech not allowed for these categories
+        allowedTradeCodes = [];
+      }
+    } else if (cat === "JCOs/OR (Dvr MT,DR,EFS,Lmn and Tdn)") {
+      if (tradeType === "Non-Tech") {
+        allowedTradeCodes = JCO_OR_NON_TECH_TRADES;
+      } else {
+        // Tech not allowed for this category
+        allowedTradeCodes = [];
+      }
+    }
+
+    // Add filtered trades to select
+    allTradeOptions.forEach(trade => {
+      if (allowedTradeCodes.includes(trade.code)) {
+        const opt = document.createElement('option');
+        opt.value = trade.value;
+        opt.textContent = trade.text;
+        opt.dataset.code = trade.code;
+        tradeSelect.appendChild(opt);
+      }
+    });
+
+    updateButtons();
   }
 
   // ===== Hidden username/password sync =====
@@ -439,8 +510,11 @@
   }
 
   // ===== Event listeners =====
-  if (tradeSelect) {
-    tradeSelect.addEventListener('change', applyTradeMapping);
+  if (catSelect) {
+    catSelect.addEventListener('change', filterTrades);
+  }
+  if (tradeTypeSelect) {
+    tradeTypeSelect.addEventListener('change', filterTrades);
   }
 
   document.querySelectorAll('input, select, textarea').forEach(el => {
@@ -449,7 +523,7 @@
   });
 
   // Initial setup
-  applyTradeMapping();
+  filterTrades();
   updateButtons();
 </script>
 </body>
