@@ -7,6 +7,7 @@ from datetime import timedelta
 from django.contrib.auth import get_user_model
 from django.utils import timezone
 import re
+from registration.models import CAT_CHOICES
 
 User = get_user_model()
 
@@ -77,16 +78,24 @@ class QuestionUpload(models.Model):
 class QuestionPaper(models.Model):
     PAPER_TYPE_CHOICES = [
         ("Primary", "Primary"),
-        # ("Secondary", "Secondary"),
     ]
 
     question_paper = models.CharField(
         max_length=20,
         choices=PAPER_TYPE_CHOICES,
         default="Primary",
-        help_text="Select whether this is a Primary paper"
     )
-    is_active = models.BooleanField(default=False,null=True)
+
+    # ✅ ADD THIS
+    category = models.CharField(
+        max_length=50,
+        choices=CAT_CHOICES,
+        null=True,
+        blank=True,
+        help_text="Category this paper belongs to"
+    )
+
+    is_active = models.BooleanField(default=False, null=True)
     is_common = models.BooleanField(default=False, editable=False)
 
     trade = models.ForeignKey(Trade, on_delete=models.PROTECT, null=True, blank=True)
@@ -94,10 +103,11 @@ class QuestionPaper(models.Model):
         null=True,
         blank=True,
         default=timedelta(hours=3),
-        help_text="Enter exam duration in format HH:MM:SS (e.g., 01:30:00 for 1h30m)"
     )
+
     qp_assign = models.ForeignKey(QuestionUpload, on_delete=models.SET_NULL, null=True, blank=True)
     questions = models.ManyToManyField("Question", through="PaperQuestion")
+
 
     # Optional (admin editable) override. If empty, hard-coded values will be used.
     part_distribution = models.JSONField(
@@ -122,57 +132,16 @@ class QuestionPaper(models.Model):
         super().save(*args, **kwargs)
 
     def delete(self, *args, **kwargs):
-        """
-        When a QuestionPaper is deleted, remove ALL related data for its questions:
-          - all answers (results_candidateanswer, exams_answer)
-          - all exam sessions / exam questions for this paper
-          - all PaperQuestion mappings
-          - all Question rows in questions_question for this paper
-        """
-        from .models import PaperQuestion, Question, ExamSession  # local import
-        from results.models import CandidateAnswer
-        from exams.models import Answer as ExamAnswer, ExamAssignment, ExamAttempt
-        from django.db.models import Q
-
-        # IDs of all questions attached to this paper (via mapping) OR belonging to this paper's trade.
-        mapped_q_ids = list(
-            PaperQuestion.objects.filter(paper=self)
-            .values_list("question_id", flat=True)
-            .distinct()
-        )
-        trade_q_ids = []
-        if self.trade_id:
-            trade_q_ids = list(
-                Question.objects.filter(trade_id=self.trade_id)
-                .values_list("id", flat=True)
-            )
-
-        q_ids = list({*mapped_q_ids, *trade_q_ids})
-
-        with transaction.atomic():
-            if q_ids:
-                # 1) Remove dependent answers that PROTECT Question
-                CandidateAnswer.objects.filter(question_id__in=q_ids).delete()
-                ExamAnswer.objects.filter(question_id__in=q_ids).delete()
-
-            # 2) Remove exam assignments/attempts that point to this paper
-            assignments = ExamAssignment.objects.filter(
-                Q(primary_paper=self) | Q(common_paper=self)
-            )
-            if assignments.exists():
-                ExamAttempt.objects.filter(assignment__in=assignments).delete()
-                assignments.delete()
-
-            # 3) Remove exam sessions (and their ExamQuestions via CASCADE)
-            ExamSession.objects.filter(paper=self).delete()
-
-            # 4) Remove PaperQuestion mappings and the actual questions
-            if q_ids:
-                PaperQuestion.objects.filter(paper=self).delete()
-                Question.objects.filter(id__in=q_ids).delete()
-
-            # 5) Finally delete the paper record itself
-            super().delete(*args, **kwargs)
+        from .models import PaperQuestion, Question  # local import to avoid circular import
+        q_ids = list(PaperQuestion.objects.filter(paper=self).values_list("question_id", flat=True).distinct())
+        for qid in q_ids:
+            other_rel_count = PaperQuestion.objects.filter(question_id=qid).exclude(paper=self).count()
+            if other_rel_count == 0:
+                try:
+                    Question.objects.filter(id=qid).delete()
+                except Exception:
+                    pass
+        super().delete(*args, **kwargs)
 
     def __str__(self):
         return self.question_paper
