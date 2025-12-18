@@ -29,7 +29,7 @@ from django.apps import apps
 from django.db import transaction
 from django.contrib import messages
 
-# Use a custom admin index template to show a single export button.
+# Use a custom admin index template to show dashboard buttons.
 admin.site.index_template = "registration/admin_index.html"
 
 

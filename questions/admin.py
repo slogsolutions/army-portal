@@ -42,10 +42,10 @@ class QuestionPaperAdmin(admin.ModelAdmin):
             'admin/js/disable_trade.js',
         )
     form = QuestionPaperAdminForm
-    list_display = ("question_paper", "qp_assign", "trade", "is_active")
+    list_display = ("question_paper", "category", "trade", "qp_assign", "is_active")
     inlines = [PaperQuestionInline]
     search_fields = ("question_paper",)
-    fields = ("question_paper", "trade", "exam_duration", "qp_assign", "is_active")
+    fields = ("question_paper", "category", "trade", "exam_duration", "qp_assign", "is_active")
     readonly_fields = ("is_common",)  # optional: show is_common read-only if you want
 
     # NOTE: Removed reference to external static admin/js/disable_trade.js
@@ -211,20 +211,21 @@ class QuestionPaperAdmin(admin.ModelAdmin):
 @admin.register(QuestionUpload)
 class QuestionUploadAdmin(admin.ModelAdmin):
     form = QuestionUploadForm
+
     list_display = ("file", "trade", "uploaded_at", "get_questions_count")
     search_fields = ("file",)
     readonly_fields = ("uploaded_at",)
-    list_per_page = 20
     ordering = ("-uploaded_at",)
+    list_per_page = 20
+
     fields = ("file", "decryption_password", "trade")
 
     def get_questions_count(self, obj):
-        """Show how many questions were imported from this upload"""
         if obj.uploaded_at:
-            count = Question.objects.filter(created_at__gte=obj.uploaded_at).count()
-            return f"{count} questions"
-        return "0 questions"
+            return Question.objects.filter(created_at__gte=obj.uploaded_at).count()
+        return 0
     get_questions_count.short_description = "Imported Questions"
+
 
     def save_model(self, request, obj, form, change):
         # store selected trade on the QuestionUpload instance

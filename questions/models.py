@@ -7,6 +7,7 @@ from datetime import timedelta
 from django.contrib.auth import get_user_model
 from django.utils import timezone
 import re
+from registration.models import CAT_CHOICES
 
 User = get_user_model()
 
@@ -77,16 +78,24 @@ class QuestionUpload(models.Model):
 class QuestionPaper(models.Model):
     PAPER_TYPE_CHOICES = [
         ("Primary", "Primary"),
-        # ("Secondary", "Secondary"),
     ]
 
     question_paper = models.CharField(
         max_length=20,
         choices=PAPER_TYPE_CHOICES,
         default="Primary",
-        help_text="Select whether this is a Primary paper"
     )
-    is_active = models.BooleanField(default=False,null=True)
+
+    # ✅ ADD THIS
+    category = models.CharField(
+        max_length=50,
+        choices=CAT_CHOICES,
+        null=True,
+        blank=True,
+        help_text="Category this paper belongs to"
+    )
+
+    is_active = models.BooleanField(default=False, null=True)
     is_common = models.BooleanField(default=False, editable=False)
 
     trade = models.ForeignKey(Trade, on_delete=models.PROTECT, null=True, blank=True)
@@ -94,10 +103,11 @@ class QuestionPaper(models.Model):
         null=True,
         blank=True,
         default=timedelta(hours=3),
-        help_text="Enter exam duration in format HH:MM:SS (e.g., 01:30:00 for 1h30m)"
     )
+
     qp_assign = models.ForeignKey(QuestionUpload, on_delete=models.SET_NULL, null=True, blank=True)
     questions = models.ManyToManyField("Question", through="PaperQuestion")
+
 
     # Optional (admin editable) override. If empty, hard-coded values will be used.
     part_distribution = models.JSONField(

@@ -91,7 +91,7 @@ DATABASES = {
         'NAME': 'it_trophy_1',
         'USER': 'root',
         'PASSWORD': 'root',
-        'HOST': 'localhost',   # or '127.0.0.1' or remote host
+        'HOST': '127.0.0.1',   # or '127.0.0.1' or remote host
         'PORT': '3306',
     }
 }
