@@ -88,11 +88,11 @@ WSGI_APPLICATION = 'config.wsgi.application'
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.mysql',
-        'NAME': 'it_trophy_1',
+        'NAME': 'it_trophy',
         'USER': 'root',
-        'PASSWORD': 'root',
+        'PASSWORD': 'root123',
         'HOST': 'localhost',   # or '127.0.0.1' or remote host
-        'PORT': '3306',
+        'PORT': '3307',
     }
 }
 

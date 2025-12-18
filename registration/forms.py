@@ -8,40 +8,102 @@ from reference.models import Trade
 User = get_user_model()
 
 class CandidateRegistrationForm(forms.ModelForm):
-    username = forms.CharField(label="Username")
-    password = forms.CharField(label="Password", widget=forms.PasswordInput)
+    username = forms.CharField(label="Username", required=True)
+    password = forms.CharField(label="Password", widget=forms.PasswordInput, required=True)
+    
     trade = forms.ModelChoiceField(
         queryset=Trade.objects.all().order_by("name"),
         empty_label="-- Select Trade --",
-        widget=forms.Select(attrs={"class": "form-control"})
+        widget=forms.Select(attrs={"class": "form-control"}),
+        required=True
     )
+    
     class Meta:
         model = CandidateProfile
         fields = [
-        "army_no", "rank", "name", "trade_type", "trade", "dob", "doe", "unit", "med_cat", "cat", "command",
-        # Exam details (left untouched as requested)
-        "nsqf_level", "exam_center", "training_center",
-        "state", "district", "shift",
-        "primary_qualification", "primary_duration", "primary_credits",
-        # "secondary_qualification", "secondary_duration", "secondary_credits",
+            "army_no", "rank", "name", "trade_type", "trade", "dob", "doe", 
+            "unit", "med_cat", "cat", "command",
+            "nsqf_level", "exam_center", "training_center",
+            "state", "district", "shift",
+            "primary_qualification", "primary_duration", "primary_credits",
         ]
         widgets = {
-            # "dob": forms.DateInput(attrs={"type": "date", "class": "form-control"}),
             "doe": forms.DateInput(attrs={"type": "date", "class": "form-control"}),
         }
 
     def clean_username(self):
         username = self.cleaned_data.get("username")
+        if not username:
+            raise forms.ValidationError("Username is required.")
         if User.objects.filter(username=username).exists():
             raise forms.ValidationError("This username is already taken. Please choose another.")
         return username
     
+    def clean_password(self):
+        password = self.cleaned_data.get("password")
+        if not password:
+            raise forms.ValidationError("Password is required.")
+        return password
+    
+    def clean_army_no(self):
+        army_no = self.cleaned_data.get("army_no")
+        if not army_no:
+            raise forms.ValidationError("Army Number is required.")
+        # Check if army_no already exists
+        if CandidateProfile.objects.filter(army_no=army_no).exists():
+            raise forms.ValidationError("This Army Number is already registered.")
+        return army_no
+    
+    def clean_dob(self):
+        dob = self.cleaned_data.get("dob")
+        if not dob:
+            raise forms.ValidationError("Date of Birth is required.")
+        # Validate format dd-mm-yyyy
+        import re
+        if not re.match(r'^\d{2}-\d{2}-\d{4}$', dob):
+            raise forms.ValidationError("Date of Birth must be in dd-mm-yyyy format.")
+        return dob
+    
     def clean(self):
         cleaned_data = super().clean()
         
-        # Create a temporary instance to validate trade-specific rules
-        # Note: This only validates the fields that are in the registration form
-        # Marks validation will happen when marks are entered later in admin
+        cat = cleaned_data.get("cat")
+        trade_type = cleaned_data.get("trade_type")
+        trade = cleaned_data.get("trade")
+        
+        # Define allowed trades for each category-tradetype combination
+        JCO_OR_TECH_TRADES = ["TTC", "OCC", "DTMN", "JE NE", "JE SYS", "OP CIPH"]
+        JCO_OR_NON_TECH_TRADES = [
+            "EFS", "DMV", "LMN", "CLK SD", "STEWARD", "WASHERMAN", 
+            "HOUSE KEEPER", "CHEFCOM", "MESS KEEPER", "SKT", "MUSICIAN", 
+            "ARTSN WW", "HAIR DRESSER", "SP STAFF", "OSS"
+        ]
+        
+        # Validate category + trade type + trade combination
+        if cat and trade_type and trade:
+            trade_code = trade.code.strip().upper()
+            
+            if cat in ["JCOs (All tdes less Dvr MT,DR,EFS,Lmn and Tdn)", "OR (All tdes less Dvr MT,DR,EFS,Lmn and Tdn)"]:
+                if trade_type == "Tech":
+                    if trade_code not in JCO_OR_TECH_TRADES:
+                        raise forms.ValidationError(
+                            f"For {cat} with Tech trade type, only these trades are allowed: {', '.join(JCO_OR_TECH_TRADES)}"
+                        )
+                else:
+                    raise forms.ValidationError(
+                        f"For {cat}, only Tech trade type is allowed."
+                    )
+            
+            elif cat == "JCOs/OR (Dvr MT,DR,EFS,Lmn and Tdn)":
+                if trade_type == "Non-Tech":
+                    if trade_code not in JCO_OR_NON_TECH_TRADES:
+                        raise forms.ValidationError(
+                            f"For {cat} with Non-Tech trade type, only these trades are allowed: {', '.join(JCO_OR_NON_TECH_TRADES)}"
+                        )
+                else:
+                    raise forms.ValidationError(
+                        f"For {cat}, only Non-Tech trade type is allowed."
+                    )
         
         return cleaned_data
 
@@ -58,12 +120,12 @@ class CandidateRegistrationForm(forms.ModelForm):
         candidate.user = user
 
         if commit:
-            candidate.save()  # will also save file fields (photograph) provided request.FILES passed into form
+            candidate.save()
         return candidate
 
 
 # -------------------------
-# Admin Form for Marks Entry (if needed separately)
+# Admin Form for Marks Entry
 # -------------------------
 class CandidateMarksForm(forms.ModelForm):
     """Form specifically for entering marks with validation"""
@@ -72,7 +134,6 @@ class CandidateMarksForm(forms.ModelForm):
         model = CandidateProfile
         fields = [
             "primary_practical_marks", "primary_viva_marks",
-            # "secondary_practical_marks", "secondary_viva_marks"
         ]
     
     def __init__(self, *args, **kwargs):
@@ -87,18 +148,13 @@ class CandidateMarksForm(forms.ModelForm):
             else:
                 self.fields['primary_practical_marks'].help_text = "Maximum: 30 marks"
                 self.fields['primary_viva_marks'].help_text = "Maximum: 10 marks"
-            
-            # Secondary is always 30/10 for all trades that have it (COMMENTED OUT)
-            # self.fields['secondary_practical_marks'].help_text = "Maximum: 30 marks"
-            # self.fields['secondary_viva_marks'].help_text = "Maximum: 10 marks"
     
     def clean(self):
         cleaned_data = super().clean()
         
         # Update instance with form data before validation
         instance = self.instance
-        for field_name in ['primary_practical_marks', 'primary_viva_marks']: 
-                          # 'secondary_practical_marks', 'secondary_viva_marks']: # Removed secondary fields
+        for field_name in ['primary_practical_marks', 'primary_viva_marks']:
             if field_name in cleaned_data:
                 setattr(instance, field_name, cleaned_data[field_name])
         
