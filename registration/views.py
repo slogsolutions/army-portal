@@ -79,18 +79,48 @@ def exam_interface(request):
     """
     candidate_profile = get_object_or_404(CandidateProfile, user=request.user)
 
-    # Determine candidate trade
+    # Determine candidate trade and category
     trade_obj = getattr(candidate_profile, "trade", None)
+    candidate_category = getattr(candidate_profile, "cat", None)
 
-    # 1) Prefer a common paper if present (latest), else try trade-specific paper
-    paper = QuestionPaper.objects.filter(is_common=True, is_active=True) \
-        .annotate(num_qs=Count("paperquestion")).filter(num_qs__gt=0).order_by("-id").first()
+    # Paper selection priority:
+    # 1) Match category + trade + is_active=True (most specific)
+    # 2) Match category + is_active=True (category-specific but any trade)
+    # 3) Match trade + is_active=True (trade-specific, any category)
+    # 4) Any active paper with questions (fallback)
+    
+    paper = None
+    
+    # Priority 1: Category + Trade + Active
+    if candidate_category and trade_obj:
+        paper = QuestionPaper.objects.filter(
+            category=candidate_category,
+            trade=trade_obj,
+            is_active=True
+        ).annotate(num_qs=Count("paperquestion")).filter(num_qs__gt=0).order_by("-id").first()
+    
+    # Priority 2: Category + Active (any trade)
+    if not paper and candidate_category:
+        paper = QuestionPaper.objects.filter(
+            category=candidate_category,
+            is_active=True
+        ).annotate(num_qs=Count("paperquestion")).filter(num_qs__gt=0).order_by("-id").first()
+    
+    # Priority 3: Trade + Active (any category)
     if not paper and trade_obj:
-        # Fallback to trade-specific non-common paper
-        paper = QuestionPaper.objects.filter(trade=trade_obj, is_common=False).order_by("-id").first()
+        paper = QuestionPaper.objects.filter(
+            trade=trade_obj,
+            is_active=True
+        ).annotate(num_qs=Count("paperquestion")).filter(num_qs__gt=0).order_by("-id").first()
+    
+    # Priority 4: Any active paper with questions (fallback)
+    if not paper:
+        paper = QuestionPaper.objects.filter(
+            is_active=True
+        ).annotate(num_qs=Count("paperquestion")).filter(num_qs__gt=0).order_by("-id").first()
 
     if not paper:
-        messages.warning(request, "No exam papers are available for your trade. Please contact admin or try later.")
+        messages.warning(request, "No exam papers are available. Please contact admin or try later.")
         return redirect("login")
 
     # 2) Try to find an existing session for this user + paper (resume) OR create a new randomized session

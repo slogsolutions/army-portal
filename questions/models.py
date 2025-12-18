@@ -301,18 +301,14 @@ class QuestionPaper(models.Model):
             # Resolve CandidateProfile from user
             candidate = CandidateProfile.objects.get(user=session.user)
 
-            answers = []
+            # Create or update CandidateAnswer records (handle duplicates gracefully)
             for eq in exam_questions:
-                answers.append(
-                    CandidateAnswer(
-                        candidate=candidate,        # ✅ REQUIRED
-                        paper=self,                 # ✅ REQUIRED
-                        question=eq.question,       # ✅ REQUIRED
-                        answer="",                  # unanswered
-                    )
+                CandidateAnswer.objects.update_or_create(
+                    candidate=candidate,
+                    paper=self,
+                    question=eq.question,
+                    defaults={"answer": ""}  # Set empty answer if creating new
                 )
-
-            CandidateAnswer.objects.bulk_create(answers)
 
 
             # update actual total_questions and save
