@@ -1,6 +1,6 @@
-from django.db.models.signals import post_save
+from django.db.models.signals import post_save, pre_delete
 from django.dispatch import receiver
-from .models import QuestionUpload
+from .models import QuestionUpload, QuestionPaper, PaperQuestion, Question
 from .services import (
     import_questions_from_dicts, 
     is_encrypted_dat, 
@@ -10,6 +10,47 @@ from .services import (
 import logging
 
 logger = logging.getLogger(__name__)
+
+@receiver(pre_delete, sender=QuestionPaper)
+def delete_linked_questions(sender, instance, **kwargs):
+    """
+    Ensure all questions linked to the QuestionPaper are deleted when the paper is deleted.
+    This covers bulk delete operations from Admin which bypass the model.delete() method.
+    """
+    try:
+        # Get all question IDs linked to this paper
+        q_ids = list(
+            PaperQuestion.objects.filter(paper=instance)
+            .values_list("question_id", flat=True)
+            .distinct()
+        )
+        
+        if q_ids:
+            # Delete dependent answers first (they might PROTECT Question)
+            # We import here to avoid circular imports if models are loaded early
+            from results.models import CandidateAnswer
+            from exams.models import Answer as ExamAnswer
+            from exams.models import ExamAssignment, ExamAttempt
+            from django.db.models import Q
+            
+            # Delete assignments linked to this paper to avoid ProtectedError
+            assignments = ExamAssignment.objects.filter(
+                Q(primary_paper=instance) | Q(common_paper=instance)
+            )
+            if assignments.exists():
+                ExamAttempt.objects.filter(assignment__in=assignments).delete()
+                assignments.delete()
+                logger.info(f"Deleted assignments linked to paper {instance}")
+
+            CandidateAnswer.objects.filter(question_id__in=q_ids).delete()
+            ExamAnswer.objects.filter(question_id__in=q_ids).delete()
+            
+            # Now delete the questions
+            Question.objects.filter(id__in=q_ids).delete()
+            logger.info(f"Deleted {len(q_ids)} questions linked to paper {instance}")
+            
+    except Exception as e:
+        logger.error(f"Error in delete_linked_questions signal for paper {instance}: {e}")
 
 @receiver(post_save, sender=QuestionUpload)
 def import_on_upload(sender, instance, created, **kwargs):
