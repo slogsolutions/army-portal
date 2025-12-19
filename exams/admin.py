@@ -11,21 +11,19 @@ from .models import ExamDayAvailability, Shift
 from django import forms
 from django.contrib import admin
 from exams.models import Shift
-from registration.models import CandidateProfile
-from reference.models import Trade   # adjust if your Trade app is different
+from registration.models import CandidateProfile, CAT_CHOICES
 
 
 class ShiftAdminForm(forms.ModelForm):
-    trade_selector = forms.ModelChoiceField(
-        queryset=Trade.objects.all(),
+    category_selector = forms.ChoiceField(
+        choices=[("", "-- Select Category --")] + list(CAT_CHOICES),
         required=False,
-        empty_label="-- Select Trade --",
-        help_text="Pick a trade to assign candidates. Or leave blank to assign manually."
+        help_text="Pick a category to assign candidates by category. Or leave blank to assign manually."
     )
-    all_trades = forms.BooleanField(
+    all_categories = forms.BooleanField(
         required=False,
-        label="All Trades",
-        help_text="Tick this to assign ALL candidates to this shift, ignoring trade."
+        label="All Categories",
+        help_text="Tick this to assign ALL candidates to this shift, ignoring category."
     )
 
     class Meta:
@@ -41,12 +39,12 @@ class ShiftAdmin(admin.ModelAdmin):
     def save_model(self, request, obj, form, change):
         super().save_model(request, obj, form, change)
 
-        trade = form.cleaned_data.get("trade_selector")
-        all_trades = form.cleaned_data.get("all_trades")
+        category = form.cleaned_data.get("category_selector")
+        all_categories = form.cleaned_data.get("all_categories")
 
-        if all_trades:
+        if all_categories:
             # assign all candidates to this shift
             CandidateProfile.objects.update(shift=obj)
-        elif trade:
-            # assign only candidates of selected trade
-            CandidateProfile.objects.filter(trade=trade).update(shift=obj)
+        elif category:
+            # assign only candidates of selected category
+            CandidateProfile.objects.filter(cat=category).update(shift=obj)
