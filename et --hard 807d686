@@ -1,0 +1,41 @@
+[33mfa7f326[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mmain[m[33m, [m[1;31morigin/main[m[33m)[m Merge branch 'main' of https://github.com/slogsolutions/army-portal
+[33me63ada0[m phase 3 finalist fixed NOT ALLOWED error
+[33ma999a6c[m working perfectly phase2 mapping with category now working on NOT ALLOWED EXPORT error
+[33md60ba82[m partial working phase1
+[33mc68d89d[m after fixing the delete button now going to working on category thing
+[33ma3b723f[m admin fix
+[33m7b702ef[m hi
+[33mf0292ab[m pulling
+[33m4cb123e[m push
+[33m53afd59[m fixed dublicate and made system robust
+[33m7038d6a[m fixed and working now after final vansh push
+[33m807d686[m added button after pull from vansh
+[33m53e56ee[m erge branch 'main' of https://github.com/slogsolutions/army-portal
+[33m5aafa3f[m Update models.py
+[33m7fef693[m Merge branch 'save-migrations'
+[33mc61f745[m removed all final
+[33mdafd0d5[m removed pycache
+[33m560c8c9[m removed pycache
+[33m43ca84f[m commit in the admin.py of question
+[33mcfcea9c[m lastest
+[33m5b9fbc5[m Add category field to QuestionPaper model
+[33m2abd41d[m Update admin.py
+[33mef41fda[m testing
+[33mf76564e[m commit beefore merge
+[33m92e0961[m Merge branch 'main' of https://github.com/slogsolutions/army-port
+[33m0b50f99[m fixed and final all set
+[33mbbda0a7[m added after pull final working now on abhi
+[33ma93129e[m removed question and questionPaper
+[33md855998[m final the questions are deleting perfectly by all everything button
+[33mfa181f6[m added Removed fucntion to remove all exam details and everything
+[33m71cced9[m Remove __pycache__ and ignore Python cache files
+[33m7610d5d[m Remove __pycache__ and ignore Python cache files
+[33ma209aae[m check and working  ON delete everything except user & RegisterCandidate
+[33m0687074[m registration form fixed
+[33m43b45e8[m  registration form fixed
+[33m047b23f[m removed po
+[33m4421970[m admins can export
+[33m1fcb282[m export format
+[33md9e02ee[m added git ignore
+[33mbd6c48f[m removed and kept only Export Exam Data
+[33m7e9b491[m first commit
