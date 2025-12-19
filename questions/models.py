@@ -79,13 +79,13 @@ class QuestionUpload(models.Model):
 
 class QuestionPaper(models.Model):
     PAPER_TYPE_CHOICES = [
-        ("Primary", "Primary"),
+        ("IT Trophy", "IT Trophy"),
     ]
 
     question_paper = models.CharField(
         max_length=20,
         choices=PAPER_TYPE_CHOICES,
-        default="Primary",
+        default="IT Trophy",
     )
 
     # ✅ ADD THIS
@@ -126,7 +126,7 @@ class QuestionPaper(models.Model):
     def save(self, *args, **kwargs):
         # Secondary papers are removed, so we assume all papers are Primary (is_common=False)
         # unless explicitly set to be common (e.g., for a general primary paper)
-        if self.question_paper == "Primary":
+        if self.question_paper == "IT Trophy":
             self.is_common = False
         # else: # If you want to keep the concept of a 'common' paper for Primary, you can adjust this logic
         #     self.is_common = True
