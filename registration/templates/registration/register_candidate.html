@@ -340,7 +340,7 @@
 
   const JCO_TECH_TRADES = ["JE NE", "JE SYS", "OCC", "TTC", "OSS", "OP CIPH"];
   const OR_TECH_TRADES = ["OCC", "TTC", "OSS", "OP CIPH"];
-  const JCO_OR_NON_TECH_EXCLUDE = ["JE NE", "JE SYS"]; // These two are JCO-only, exclude for JCO/OR non-tech
+  const JCO_OR_NON_TECH_EXCLUDE = ["JE NE", "JE SYS", "OCC", "TTC", "OSS", "OP CIPH"]; // Exclude all tech trades from JCO/OR Non-Tech category
 
   const tradeMapping = {
     "TTC": { primary:{qualification:"Technician Data Network",duration:"1200",credits:"40"} },
