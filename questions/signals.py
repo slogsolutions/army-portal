@@ -67,7 +67,9 @@ def import_on_upload(sender, instance, created, **kwargs):
         try:
             imported_questions = import_questions_from_dicts(
                 questions_data, 
-                default_trade=None
+                default_trade=None,
+                default_category=instance.category,
+                source_upload=instance
             )
             imported_count = len(imported_questions)
             

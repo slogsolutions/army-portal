@@ -136,6 +136,24 @@ class CandidateProfileAdminForm(forms.ModelForm):
         model = CandidateProfile
         fields = "__all__"
 
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        try:
+            from reference.models import Trade
+            tech_jco_codes = ["JE NE", "JE SYS", "OCC", "TTC", "OSS", "OP CIPH"]
+            tech_or_codes = ["OCC", "TTC", "OSS", "OP CIPH"]
+            all_codes = list(Trade.objects.values_list("code", flat=True))
+            nontech_codes = [code for code in all_codes if code not in tech_jco_codes]
+            cat_val = self.data.get("cat") or (self.initial.get("cat") if hasattr(self, "initial") else None) or (self.instance.cat if self.instance else None)
+            if cat_val == "JCOs (All tdes less Dvr MT,DR,EFS,Lmn and Tdn)":
+                self.fields["trade"].queryset = Trade.objects.filter(code__in=tech_jco_codes).order_by("name")
+            elif cat_val == "OR (All tdes less Dvr MT,DR,EFS,Lmn and Tdn)":
+                self.fields["trade"].queryset = Trade.objects.filter(code__in=tech_or_codes).order_by("name")
+            elif cat_val == "JCOs/OR (Dvr MT,DR,EFS,Lmn and Tdn)":
+                self.fields["trade"].queryset = Trade.objects.filter(code__in=nontech_codes).order_by("name")
+        except Exception:
+            pass
+
     def clean(self):
         cleaned_data = super().clean()
 
@@ -164,6 +182,31 @@ class CandidateProfileAdminForm(forms.ModelForm):
                         self.add_error(field, messages)
             else:
                 raise forms.ValidationError(str(e))
+
+        cat = cleaned_data.get("cat")
+        trade_type = cleaned_data.get("trade_type")
+        trade = cleaned_data.get("trade")
+        if cat and trade_type and trade:
+            trade_code = trade.code.strip().upper()
+            try:
+                from reference.models import Trade
+                tech_jco_codes = ["JE NE", "JE SYS", "OCC", "TTC", "OSS", "OP CIPH"]
+                tech_or_codes = ["OCC", "TTC", "OSS", "OP CIPH"]
+                all_codes = list(Trade.objects.values_list("code", flat=True))
+                nontech_codes = [code for code in all_codes if code not in tech_jco_codes]
+            except Exception:
+                tech_jco_codes = ["JE NE", "JE SYS", "OCC", "TTC", "OSS", "OP CIPH"]
+                tech_or_codes = ["OCC", "TTC", "OSS", "OP CIPH"]
+                nontech_codes = []
+            if cat == "JCOs (All tdes less Dvr MT,DR,EFS,Lmn and Tdn)":
+                if trade_type != "Tech" or trade_code not in tech_jco_codes:
+                    self.add_error("trade", "Invalid trade for JCOs Tech category.")
+            elif cat == "OR (All tdes less Dvr MT,DR,EFS,Lmn and Tdn)":
+                if trade_type != "Tech" or trade_code not in tech_or_codes:
+                    self.add_error("trade", "Invalid trade for OR Tech category.")
+            elif cat == "JCOs/OR (Dvr MT,DR,EFS,Lmn and Tdn)":
+                if trade_type != "Non-Tech" or trade_code not in nontech_codes:
+                    self.add_error("trade", "Invalid trade for JCOs/OR Non-Tech category.")
 
         return cleaned_data
 

@@ -42,6 +42,8 @@ class Question(models.Model):
     options = models.JSONField(blank=True, null=True)
     correct_answer = models.JSONField(blank=True, null=True)
     trade = models.ForeignKey(Trade, on_delete=models.SET_NULL, null=True, blank=True)
+    category = models.CharField(max_length=255, choices=CAT_CHOICES, null=True, blank=True)
+    upload = models.ForeignKey("QuestionUpload", on_delete=models.SET_NULL, null=True, blank=True, related_name="questions")
     is_active = models.BooleanField(default=True)
     created_at = models.DateTimeField(auto_now_add=True)
 

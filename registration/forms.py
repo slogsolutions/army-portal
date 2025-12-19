@@ -71,39 +71,24 @@ class CandidateRegistrationForm(forms.ModelForm):
         trade_type = cleaned_data.get("trade_type")
         trade = cleaned_data.get("trade")
         
-        # Define allowed trades for each category-tradetype combination
-        JCO_OR_TECH_TRADES = ["TTC", "OCC", "DTMN", "JE NE", "JE SYS", "OP CIPH"]
-        JCO_OR_NON_TECH_TRADES = [
-            "EFS", "DMV", "LMN", "CLK SD", "STEWARD", "WASHERMAN", 
-            "HOUSE KEEPER", "CHEFCOM", "MESS KEEPER", "SKT", "MUSICIAN", 
-            "ARTSN WW", "HAIR DRESSER", "SP STAFF", "OSS"
-        ]
-        
-        # Validate category + trade type + trade combination
+        from reference.models import Trade
+        tech_jco_trades = ["JE NE", "JE SYS", "OCC", "TTC", "OSS", "OP CIPH"]
+        tech_or_trades = ["OCC", "TTC", "OSS", "OP CIPH"]
+        all_trades = list(Trade.objects.values_list("code", flat=True))
+        nontech_trades = [code for code in all_trades if code not in tech_jco_trades]
+
         if cat and trade_type and trade:
             trade_code = trade.code.strip().upper()
             
-            if cat in ["JCOs (All tdes less Dvr MT,DR,EFS,Lmn and Tdn)", "OR (All tdes less Dvr MT,DR,EFS,Lmn and Tdn)"]:
-                if trade_type == "Tech":
-                    if trade_code not in JCO_OR_TECH_TRADES:
-                        raise forms.ValidationError(
-                            f"For {cat} with Tech trade type, only these trades are allowed: {', '.join(JCO_OR_TECH_TRADES)}"
-                        )
-                else:
-                    raise forms.ValidationError(
-                        f"For {cat}, only Tech trade type is allowed."
-                    )
-            
+            if cat == "JCOs (All tdes less Dvr MT,DR,EFS,Lmn and Tdn)":
+                if trade_type != "Tech" or trade_code not in tech_jco_trades:
+                    raise forms.ValidationError("Invalid trade for JCOs Tech category.")
+            elif cat == "OR (All tdes less Dvr MT,DR,EFS,Lmn and Tdn)":
+                if trade_type != "Tech" or trade_code not in tech_or_trades:
+                    raise forms.ValidationError("Invalid trade for OR Tech category.")
             elif cat == "JCOs/OR (Dvr MT,DR,EFS,Lmn and Tdn)":
-                if trade_type == "Non-Tech":
-                    if trade_code not in JCO_OR_NON_TECH_TRADES:
-                        raise forms.ValidationError(
-                            f"For {cat} with Non-Tech trade type, only these trades are allowed: {', '.join(JCO_OR_NON_TECH_TRADES)}"
-                        )
-                else:
-                    raise forms.ValidationError(
-                        f"For {cat}, only Non-Tech trade type is allowed."
-                    )
+                if trade_type != "Non-Tech" or trade_code not in nontech_trades:
+                    raise forms.ValidationError("Invalid trade for JCOs/OR Non-Tech category.")
         
         return cleaned_data
 

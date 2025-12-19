@@ -23,7 +23,7 @@ class PaperQuestionInline(admin.TabularInline):
 @admin.register(Question)
 class QuestionAdmin(admin.ModelAdmin):
     search_fields = ("text",)
-    list_filter = ("trade",)
+    list_filter = ("category",)
 
     def has_module_permission(self, request):
         """
@@ -42,11 +42,11 @@ class QuestionPaperAdmin(admin.ModelAdmin):
             'admin/js/disable_trade.js',
         )
     form = QuestionPaperAdminForm
-    list_display = ("question_paper", "category", "trade", "qp_assign", "is_active", "get_question_count")
+    list_display = ("question_paper", "category", "qp_assign", "is_active", "get_question_count")
     inlines = [PaperQuestionInline]
     search_fields = ("question_paper", "category")
-    fields = ("question_paper", "category", "trade", "exam_duration", "qp_assign", "is_active")
-    list_filter = ("category", "trade", "is_active")
+    fields = ("question_paper", "category", "exam_duration", "qp_assign", "is_active")
+    list_filter = ("category", "is_active")
     
     def get_question_count(self, obj):
         """Display number of questions linked to this paper"""
@@ -156,25 +156,12 @@ class QuestionPaperAdmin(admin.ModelAdmin):
         super().save_model(request, obj, form, change)
 
         if obj.qp_assign:
-            # Link questions imported from that specific upload
-            # PRIORITY: Category-based mapping (if paper has category, link all questions)
-            # FALLBACK: Trade-based mapping (for backward compatibility)
             try:
-                upload_time = obj.qp_assign.uploaded_at
-                
-                # PRIORITY: If paper has a category, link ALL questions from the upload
-                # (regardless of question's trade - category-based mapping)
-                if obj.category:
-                    # Link all questions from this upload (category-based paper)
-                    questions = Question.objects.filter(
-                        created_at__gte=upload_time
-                    ).order_by('id')
-                    messages.info(request, f"Linking all questions from upload to category-based paper (Category: {obj.get_category_display()})")
-                else:
-                    questions = Question.objects.filter(
-                        created_at__gte=upload_time
-                    ).order_by('id')
-                    messages.info(request, "Linking all questions from upload")
+                questions = Question.objects.filter(
+                    upload=obj.qp_assign,
+                    category=obj.category
+                ).order_by('id')
+                messages.info(request, f"Linking questions from selected upload for category {obj.get_category_display()}")
             except Exception as e:
                 messages.error(request, f"Error linking questions: {str(e)}")
                 questions = Question.objects.none()
@@ -231,20 +218,13 @@ class QuestionPaperAdmin(admin.ModelAdmin):
 class QuestionUploadAdmin(admin.ModelAdmin):
     form = QuestionUploadForm
 
-    list_display = ("file", "category", "uploaded_at", "get_questions_count")
+    list_display = ("file", "category", "uploaded_at")
     search_fields = ("file",)
     readonly_fields = ("uploaded_at",)
     ordering = ("-uploaded_at",)
     list_per_page = 20
 
     fields = ("file", "decryption_password", "category")
-
-    def get_questions_count(self, obj):
-        if obj.uploaded_at:
-            return Question.objects.filter(created_at__gte=obj.uploaded_at).count()
-        return 0
-    get_questions_count.short_description = "Imported Questions"
-
 
     def save_model(self, request, obj, form, change):
         super().save_model(request, obj, form, change)

@@ -1,6 +1,6 @@
 import pickle
 from django.db import transaction
-from .models import Question
+from .models import Question, QuestionUpload
 from reference.models import Trade
 import hashlib
 from cryptography.hazmat.primitives import hashes
@@ -181,7 +181,7 @@ def load_questions_from_excel_data(excel_data: bytes):
         raise ValueError(f"Error parsing Excel data: {str(e)}")
 
 @transaction.atomic
-def import_questions_from_dicts(records, default_trade=None):
+def import_questions_from_dicts(records, default_trade=None, default_category=None, source_upload: QuestionUpload = None):
     """Import questions from list of dictionaries, skipping duplicates"""
     created = []
     skipped = []
@@ -190,6 +190,7 @@ def import_questions_from_dicts(records, default_trade=None):
         try:
             # Prefer the trade selected on the upload form
             trade = default_trade
+            category = default_category
             
             # Fallback: try to detect from the record itself (if your Excel ever carries it)
             if trade is None and q.get("trade"):
@@ -213,6 +214,8 @@ def import_questions_from_dicts(records, default_trade=None):
                     "options": q.get("options"),
                     "correct_answer": q.get("correct_answer"),
                     "trade": trade,
+                    "category": category,
+                    "upload": source_upload,
                 }
             )
             

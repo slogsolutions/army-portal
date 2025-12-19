@@ -114,6 +114,20 @@ class QuestionPaperAdminForm(forms.ModelForm):
         model = QuestionPaper
         fields = '__all__'
 
-    # The logic for 'Secondary' papers is removed.
-    # The default form behavior is sufficient now that only 'Primary' exists.
-    pass
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        try:
+            from reference.models import Trade
+            tech_jco_codes = ["JE NE", "JE SYS", "OCC", "TTC", "OSS", "OP CIPH"]
+            tech_or_codes = ["OCC", "TTC", "OSS", "OP CIPH"]
+            all_codes = list(Trade.objects.values_list("code", flat=True))
+            nontech_codes = [code for code in all_codes if code not in tech_jco_codes]
+            cat_val = self.data.get("category") or (self.initial.get("category") if hasattr(self, "initial") else None) or (self.instance.category if self.instance else None)
+            if cat_val == "JCOs (All tdes less Dvr MT,DR,EFS,Lmn and Tdn)":
+                self.fields["trade"].queryset = Trade.objects.filter(code__in=tech_jco_codes).order_by("name")
+            elif cat_val == "OR (All tdes less Dvr MT,DR,EFS,Lmn and Tdn)":
+                self.fields["trade"].queryset = Trade.objects.filter(code__in=tech_or_codes).order_by("name")
+            elif cat_val == "JCOs/OR (Dvr MT,DR,EFS,Lmn and Tdn)":
+                self.fields["trade"].queryset = Trade.objects.filter(code__in=nontech_codes).order_by("name")
+        except Exception:
+            pass
