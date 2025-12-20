@@ -240,6 +240,17 @@
             transform: none;
             box-shadow: none;
         }
+
+        .start-btn.locked {
+            background: linear-gradient(to right, #555, #333);
+            color: #ff6b6b;
+            border: 1px solid #ff6b6b;
+            opacity: 1;
+            cursor: not-allowed;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+        }
         
         .instructions-list {
             padding-left: 20px;
@@ -431,8 +442,8 @@
                             </div>
                             {% endif %}
                         {% else %}
-                            <button id="start-exam-btn-unavailable" class="start-btn disabled" disabled style="background-color: #cccccc; cursor: not-allowed;">
-                                <i class="fas fa-lock"></i> Exam Locked (Outside Shift Window)
+                            <button id="start-exam-btn-unavailable" class="start-btn locked" disabled>
+                                <i class="fas fa-lock"></i> &nbsp; Exam Locked (Outside Shift Window)
                             </button>
                             <div id="exam-status-info" style="margin-top: 10px; color: #f44336; font-size: 14px;">
                                 {% if candidate.shift %}
@@ -508,10 +519,17 @@
                 {% if candidate.shift %}
                 const shiftEndElement = document.getElementById('shift-end-time');
                 if (shiftEndElement) {
-                    const shiftDate = new Date('{{ candidate.shift.date|date:"Y-m-d" }}');
-                    const shiftTime = '{{ candidate.shift.start_time }}'.split(':');
-                    const shiftStart = new Date(shiftDate);
-                    shiftStart.setHours(parseInt(shiftTime[0]), parseInt(shiftTime[1]), 0, 0);
+                    // Use date components to avoid timezone issues with string parsing
+                    const year = {{ candidate.shift.date|date:"Y" }};
+                    const month = {{ candidate.shift.date|date:"n" }} - 1; // JS months are 0-11
+                    const day = {{ candidate.shift.date|date:"j" }};
+                    
+                    // Force 24-hour format for reliable parsing
+                    const shiftTime = '{{ candidate.shift.start_time|time:"H:i" }}'.split(':');
+                    const hour = parseInt(shiftTime[0]);
+                    const minute = parseInt(shiftTime[1]);
+                    
+                    const shiftStart = new Date(year, month, day, hour, minute, 0);
                     
                     // Add 3 hours
                     const shiftEnd = new Date(shiftStart);
