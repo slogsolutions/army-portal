@@ -565,7 +565,7 @@
             font-size:20px;padding:15px 25px;
             background:#c8b072;color:#000;
             border:none;border-radius:8px;cursor:pointer;">
-            🚀 Start Exam
+             Start Exam
         </button>
     </div>
 
@@ -579,13 +579,13 @@
             <h2>Fullscreen Exited</h2>
             <p>You have exited fullscreen mode. <br>
             If this was accidental, please click "Return to Exam" immediately.<br>
-            Otherwise, your exam will be terminated.</p>
+            Otherwise, you must submit your exam.</p>
             <div class="modal-buttons">
                 <button class="modal-btn modal-btn-confirm" id="returnToExamBtn">
                     Return to Exam
                 </button>
-                <button class="modal-btn modal-btn-cancel" id="terminateExamBtn">
-                    Terminate Exam
+                <button class="modal-btn modal-btn-cancel" id="submitExamBtn" style="background-color: #ff0000;">
+                    Submit Exam
                 </button>
             </div>
         </div>
@@ -926,7 +926,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
   // FS Modal Listeners
   const returnBtn = document.getElementById('returnToExamBtn');
-  const termBtn = document.getElementById('terminateExamBtn');
+  const submitBtn = document.getElementById('submitExamBtn');
   
   if (returnBtn) {
       returnBtn.addEventListener('click', () => {
@@ -938,9 +938,30 @@ document.addEventListener("DOMContentLoaded", () => {
       });
   }
 
-  if (termBtn) {
-      termBtn.addEventListener('click', () => {
-          window.location.replace("/candidate/login");
+  if (submitBtn) {
+      submitBtn.addEventListener('click', () => {
+          document.getElementById('fsExitModal').style.display = 'none';
+          examSubmitted = true;
+          exitFullScreen();
+          
+          const form = document.getElementById("exam-form");
+          if (form) {
+              // Ensure CSRF token is present
+              const csrfInput = form.querySelector('[name=csrfmiddlewaretoken]');
+              if (!csrfInput) {
+                const token = getCSRFToken();
+                if (token) {
+                  const input = document.createElement('input');
+                  input.type = 'hidden';
+                  input.name = 'csrfmiddlewaretoken';
+                  input.value = token;
+                  form.appendChild(input);
+                }
+              }
+              form.submit();
+          } else {
+              window.location.replace("/candidate/login");
+          }
       });
   }
 

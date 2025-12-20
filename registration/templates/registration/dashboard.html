@@ -431,11 +431,11 @@
                             </div>
                             {% endif %}
                         {% else %}
-                            <button id="start-exam-btn-unavailable" class="start-btn" data-exam-url="{% url 'clear_shift_and_start_exam' %}" data-can-start="false">
+                            <button id="start-exam-btn-unavailable" class="start-btn" data-exam-url="{% url 'clear_shift_and_start_exam' %}" data-can-start="false" {% if not candidate.shift %}disabled style="background-color: #cccccc; cursor: not-allowed;"{% endif %}>
                                 {% if candidate.shift %}
                                 <i class="fas fa-clock"></i> Start Exam (Outside Shift Window - Click to Start Anyway)
                                 {% else %}
-                                <i class="fas fa-clock"></i> Start Exam (No Shift Assigned - Click to Start)
+                                <i class="fas fa-clock"></i> Start Exam (No Shift Assigned - Contact Admin)
                                 {% endif %}
                             </button>
                             <div id="exam-status-info" style="margin-top: 10px; color: #ff9800; font-size: 14px;">
@@ -447,7 +447,7 @@
                                     <p>Current time: <span id="current-time"></span></p>
                                     <p style="color: #ff5722;"><strong>⚠ You are outside the 3-hour window, but you can still start the exam.</strong></p>
                                 {% else %}
-                                    <p style="color: #ff5722;">No shift assigned. You can still start the exam.</p>
+                                    <p style="color: #ff5722;">No shift assigned. You cannot start the exam until a shift is assigned.</p>
                                 {% endif %}
                             </div>
                         {% endif %}
