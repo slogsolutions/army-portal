@@ -222,7 +222,7 @@
           <div class="field-error" id="error-cat">{% for error in form.cat.errors %}{{ error }}<br>{% endfor %}</div>
         </div>
 
-        <div>
+        <!-- <div>
           <label for="id_trade_type">Trade Type *</label>
           <select name="trade_type" id="id_trade_type" required {% if form.trade_type.errors %}class="invalid"{% endif %}>
             <option value="">-- Select Trade Type --</option>
@@ -231,8 +231,32 @@
             {% endfor %}
           </select>
           <div class="field-error" id="error-trade_type">{% for error in form.trade_type.errors %}{{ error }}<br>{% endfor %}</div>
-        </div>
+        </div> -->
+        <div>
+  <label>Trade Type *</label>
 
+  <!-- Visible (read-only) -->
+  <input
+    type="text"
+    id="trade_type_display"
+    readonly
+    placeholder="Auto selected based on Category"
+  />
+
+  <!-- Hidden (actual submitted value) -->
+  <input
+    type="hidden"
+    name="trade_type"
+    id="id_trade_type"
+  />
+
+  <div class="field-error" id="error-trade_type">
+    {% for error in form.trade_type.errors %}{{ error }}<br>{% endfor %}
+  </div>
+</div>
+
+
+        
         <div>
           <label>Trade *</label>
           <select name="trade" id="trade" class="form-control" required {% if form.trade.errors %}class="invalid"{% endif %}>
@@ -331,26 +355,221 @@
       All Rights Reserved @ SLOG Solutions Pvt Ltd
     </div>
   </div>
-<script>
-  // ===== STRICT TRADE RULES =====
-  // Updated requirements:
-  // - If category contains "JCO" but NOT "JCO/OR" → Trade Type = Tech, Trades: JE NE, JE SYS, OCC, TTC, OSS, OP CIPH
-  // - If category contains "OR" but NOT "JCO/OR" → Trade Type = Tech, Trades: OCC, TTC, OSS, OP CIPH
-  // - If category is "JCOs/OR (Dvr MT,DR,EFS,Lmn and Tdn)" → Trade Type = Non-Tech, All trades EXCEPT the JCO tech ones
 
-  const JCO_TECH_TRADES = ["JE NE", "JE SYS", "OCC", "TTC", "OSS", "OP CIPH"];
-  const OR_TECH_TRADES = ["OCC", "TTC", "OSS", "OP CIPH"];
-  const JCO_OR_NON_TECH_EXCLUDE = ["JE NE", "JE SYS", "OCC", "TTC", "OSS", "OP CIPH"]; // Exclude all tech trades from JCO/OR Non-Tech category
+<!-- <script>
+  // ===== STRICT TRADE RULES =====
+  // JCO (All tdes less Dvr MT,DR,EFS,Lmn and Tdn) → TECH → 6 trades only
+  // OR (All tdes less Dvr MT,DR,EFS,Lmn and Tdn) → TECH → same 6 trades
+  // JCOs/OR (Dvr MT,DR,EFS,Lmn and Tdn) → NON-TECH → all other trades
+
+  const JCO_OR_TECH_TRADES = ["TTC", "OCC", "DTMN", "JE NE", "JE SYS", "OP CIPH"];
+  const JCO_OR_NON_TECH_TRADES = ["EFS", "DMV", "LMN", "CLK SD", "STEWARD", "WASHERMAN", "HOUSE KEEPER", "CHEFCOM", "MESS KEEPER", "SKT", "MUSICIAN", "ARTSN WW", "HAIR DRESSER", "SP STAFF", "OSS"];
 
   const tradeMapping = {
     "TTC": { primary:{qualification:"Technician Data Network",duration:"1200",credits:"40"} },
     "OCC": { primary:{qualification:"Technician Communication Center & Radio System",duration:"1200",credits:"40"} },
     "DTMN": { primary:{qualification:"Technician Draughtsman Topographical",duration:"1200",credits:"40"} },
     "EFS": { primary:{qualification:"Technician Electrical System",duration:"1200",credits:"40"} },
-    "DVR MT": { primary:{qualification:"Commercial Vehicle Driver (Heavy Motor Veh Driver) Light Motor Veh Driver",duration:"1350",credits:"45"} },
+    "DMV": { primary:{qualification:"Commercial Vehicle Driver (Heavy Motor Veh Driver) Light Motor Veh Driver",duration:"1350",credits:"45"} },
     "LMN": { primary:{qualification:"Technician Network System Support",duration:"1200",credits:"40"} },
     "CLK SD": { primary:{qualification:"Office Supervisor",duration:"1260",credits:"42"} },
-    "DR": { primary:{qualification:"Despatch Rider",duration:"1200",credits:"40"} },
+    "STEWARD": { primary:{qualification:"Food & Beverage Service Associate",duration:"1350",credits:"45"} },
+    "WASHERMAN": { primary:{qualification:"Laundry Associate",duration:"1350",credits:"45"} },
+    "HOUSE KEEPER": { primary:{qualification:"Housekeeping Support Staff",duration:"1200",credits:"40"} },
+    "CHEFCOM": { primary:{qualification:"Commis Chef (Advanced)",duration:"1200",credits:"40"} },
+    "MESS KEEPER": { primary:{qualification:"Camp Coordinator",duration:"1350",credits:"45"} },
+    "SKT": { primary:{qualification:"Store Keeper Technician",duration:"1350",credits:"45"} },
+    "MUSICIAN": { primary:{qualification:"Music Performer",duration:"1200",credits:"40"} },
+    "ARTSN WW": { primary:{qualification:"Technician Wood Works",duration:"1350",credits:"45"} },
+    "HAIR DRESSER": { primary:{qualification:"N/A",duration:"N/A",credits:"N/A"} },
+    "SP STAFF": { primary:{qualification:"N/A",duration:"N/A",credits:"N/A"} },
+    "JE NE": { primary:{qualification:"Junior Engineer Network",duration:"1200",credits:"40"} },
+    "JE SYS": { primary:{qualification:"Junior Engineer Systems",duration:"1200",credits:"40"} },
+    "OP CIPH": { primary:{qualification:"Operator Cipher",duration:"1200",credits:"40"} },
+    "OSS": { primary:{qualification:"OSS",duration:"1200",credits:"40"} }
+  };
+
+  // Get all elements
+  const catSelect = document.getElementById("id_cat");
+  const tradeTypeSelect = document.getElementById("id_trade_type");
+  const tradeSelect = document.getElementById("trade");
+  const armyNoInput = document.querySelector('input[name="army_no"]');
+  const dobInput = document.querySelector('input[name="dob"]');
+  const usernameHidden = document.getElementById('username_hidden');
+  const passwordHidden = document.getElementById('password_hidden');
+
+  // Store all trade options
+  const allTradeOptions = [];
+  Array.from(tradeSelect.options).forEach(opt => {
+    if (opt.value) {
+      allTradeOptions.push({
+        value: opt.value,
+        code: opt.dataset.code,
+        text: opt.textContent
+      });
+    }
+  });
+
+  // ===== FILTER TRADES BASED ON CATEGORY + TRADE TYPE =====
+  function filterTrades() {
+    const cat = catSelect.value;
+    const tradeType = tradeTypeSelect.value;
+
+    // Clear current trade options except placeholder
+    tradeSelect.innerHTML = '<option value="">-- Select Trade --</option>';
+
+    if (!cat || !tradeType) {
+      updateButtons();
+      return;
+    }
+
+    let allowedTradeCodes = [];
+
+    // Determine allowed trades based on category and trade type
+    if (cat === "JCOs (All tdes less Dvr MT,DR,EFS,Lmn and Tdn)" || cat === "OR (All tdes less Dvr MT,DR,EFS,Lmn and Tdn)") {
+      if (tradeType === "Tech") {
+        allowedTradeCodes = JCO_OR_TECH_TRADES;
+      } else {
+        // Non-Tech not allowed for these categories
+        allowedTradeCodes = [];
+      }
+    } else if (cat === "JCOs/OR (Dvr MT,DR,EFS,Lmn and Tdn)") {
+      if (tradeType === "Non-Tech") {
+        allowedTradeCodes = JCO_OR_NON_TECH_TRADES;
+      } else {
+        // Tech not allowed for this category
+        allowedTradeCodes = [];
+      }
+    }
+
+    // Add filtered trades to select
+    allTradeOptions.forEach(trade => {
+      if (allowedTradeCodes.includes(trade.code)) {
+        const opt = document.createElement('option');
+        opt.value = trade.value;
+        opt.textContent = trade.text;
+        opt.dataset.code = trade.code;
+        tradeSelect.appendChild(opt);
+      }
+    });
+
+    updateButtons();
+  }
+
+  // ===== Hidden username/password sync =====
+  function syncCreds() {
+    if (usernameHidden) usernameHidden.value = (armyNoInput?.value || '').trim();
+    if (passwordHidden) passwordHidden.value = (dobInput?.value || '');
+  }
+
+  [armyNoInput, dobInput].forEach(el => el && el.addEventListener('input', syncCreds));
+  syncCreds(); // initial
+
+  // ===== Validation function =====
+  function validateField(el) {
+    const errorEl = document.getElementById(`error-${el.name}`);
+    let message = '';
+
+    if (el.required) {
+      if (el.type === 'file') {
+        if (!el.files || el.files.length === 0) {
+          message = 'This field is required.';
+        }
+      } else if (el.tagName === 'SELECT') {
+        if (!el.value) {
+          message = 'Please select an option.';
+        }
+      } else {
+        if (!el.value.trim()) {
+          message = 'This field is required.';
+        }
+      }
+    }
+
+    if (el.name === 'doe') {
+      const val = el.value;
+      if (val) {
+        const selectedDate = new Date(val);
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        if (selectedDate >= today) {
+          message = 'Date must be before today.';
+        }
+      }
+    }
+
+    if (el.name === 'dob') {
+      const val = el.value.trim();
+      if (val && !/^\d{2}-\d{2}-\d{4}$/.test(val)) {
+        message = 'Format: dd-mm-yyyy';
+      }
+    }
+
+    if (message) {
+      el.classList.add('invalid');
+      if (errorEl) errorEl.textContent = message;
+    } else {
+      el.classList.remove('invalid');
+      if (errorEl) errorEl.textContent = '';
+    }
+
+    return !message;
+  }
+
+  // ===== Form validation =====
+  function isFormValid() {
+    let isValid = true;
+    document.querySelectorAll('input, select, textarea').forEach(el => {
+      isValid &= validateField(el);
+    });
+    return isValid;
+  }
+
+  // ===== Button update function =====
+  function updateButtons() {
+    const submitBtn = document.querySelector('button[type="submit"]');
+    if (submitBtn) {
+      submitBtn.disabled = !isFormValid();
+    }
+  }
+
+  // ===== Event listeners =====
+  if (catSelect) {
+    catSelect.addEventListener('change', filterTrades);
+  }
+  if (tradeTypeSelect) {
+    tradeTypeSelect.addEventListener('change', filterTrades);
+  }
+
+  document.querySelectorAll('input, select, textarea').forEach(el => {
+    el.addEventListener('input', updateButtons);
+    el.addEventListener('change', updateButtons);
+  });
+
+  // Initial setup
+  filterTrades();
+  updateButtons();
+</script> -->
+
+<script>
+  // ===== STRICT TRADE RULES =====
+  // Updated requirements:
+  // - Category "JCOs (All tdes less Dvr MT,DR,EFS,Lmn and Tdn)" → Trade Type = Tech, Trades: JE NE, JE SYS, OCC, TTC, OSS, OP CIPH
+  // - Category "OR (All tdes less Dvr MT,DR,EFS,Lmn and Tdn)" → Trade Type = Tech, Trades: OCC, TTC, OSS, OP CIPH
+  // - Category "JCOs/OR (Dvr MT,DR,EFS,Lmn and Tdn)" → Trade Type = Non-Tech, All trades EXCEPT those in JCO (JE NE, JE SYS, OCC, TTC, OSS, OP CIPH)
+
+  const JCO_TECH_TRADES = ["JE NE", "JE SYS", "OCC", "TTC", "OSS", "OP CIPH"];
+  const OR_TECH_TRADES = ["OCC", "TTC", "OSS", "OP CIPH"];
+  const JCO_EXCLUDE_TRADES = ["JE NE", "JE SYS", "OCC", "TTC", "OSS", "OP CIPH"];
+
+  const tradeMapping = {
+    "TTC": { primary:{qualification:"Technician Data Network",duration:"1200",credits:"40"} },
+    "OCC": { primary:{qualification:"Technician Communication Center & Radio System",duration:"1200",credits:"40"} },
+    "DTMN": { primary:{qualification:"Technician Draughtsman Topographical",duration:"1200",credits:"40"} },
+    "EFS": { primary:{qualification:"Technician Electrical System",duration:"1200",credits:"40"} },
+    "DMV": { primary:{qualification:"Commercial Vehicle Driver (Heavy Motor Veh Driver) Light Motor Veh Driver",duration:"1350",credits:"45"} },
+    "LMN": { primary:{qualification:"Technician Network System Support",duration:"1200",credits:"40"} },
+    "CLK SD": { primary:{qualification:"Office Supervisor",duration:"1260",credits:"42"} },
     "STEWARD": { primary:{qualification:"Food & Beverage Service Associate",duration:"1350",credits:"45"} },
     "WASHERMAN": { primary:{qualification:"Laundry Associate",duration:"1350",credits:"45"} },
     "HOUSE KEEPER": { primary:{qualification:"Housekeeping Support Staff",duration:"1200",credits:"40"} },
@@ -403,31 +622,36 @@
     let allowedTradeCodes = [];
     let forcedTradeType = '';
 
-    if (cat.includes("JCO") && !cat.includes("JCO/OR")) {
-      // JCO category (not the combined one)
+    if (cat === "JCOs (All tdes less Dvr MT,DR,EFS,Lmn and Tdn)") {
+      // JCO category
       forcedTradeType = "Tech";
       allowedTradeCodes = JCO_TECH_TRADES;
-    } else if (cat.includes("OR") && !cat.includes("JCO/OR")) {
-      // OR category (not the combined one)
+    } else if (cat === "OR (All tdes less Dvr MT,DR,EFS,Lmn and Tdn)") {
+      // OR category
       forcedTradeType = "Tech";
       allowedTradeCodes = OR_TECH_TRADES;
-    } else if (cat.includes("JCO/OR")) {
+    } else if (cat === "JCOs/OR (Dvr MT,DR,EFS,Lmn and Tdn)") {
       // The combined category for non-tech trades
       forcedTradeType = "Non-Tech";
-      // All trades except the JCO-exclusive ones (JE NE and JE SYS)
+      // All trades except those in JCO
       allTradeOptions.forEach(trade => {
-        if (!JCO_OR_NON_TECH_EXCLUDE.includes(trade.code)) {
+        if (!JCO_EXCLUDE_TRADES.includes(trade.code)) {
           allowedTradeCodes.push(trade.code);
         }
       });
     }
 
-    // Auto-select trade type if forced
-    if (forcedTradeType) {
-      tradeTypeSelect.value = forcedTradeType;
-    } else {
-      tradeTypeSelect.value = '';
-    }
+  const tradeTypeHidden = document.getElementById("id_trade_type");
+const tradeTypeDisplay = document.getElementById("trade_type_display");
+
+if (forcedTradeType) {
+  tradeTypeHidden.value = forcedTradeType;      // submit value
+  tradeTypeDisplay.value = forcedTradeType;     // show value
+} else {
+  tradeTypeHidden.value = '';
+  tradeTypeDisplay.value = '';
+}
+
 
     // Add filtered trades to select
     allTradeOptions.forEach(trade => {
@@ -534,6 +758,5 @@
   // Initial setup
   filterTrades();
   updateButtons();
-</script>
-</body>
+</script></body>
 </html>
