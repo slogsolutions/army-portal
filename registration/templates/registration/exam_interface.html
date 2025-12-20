@@ -766,6 +766,15 @@ document.addEventListener("DOMContentLoaded", () => {
   let altPressed = false;
   
   // ---------------------------
+  // Check for Page Refresh/Reload
+  // ---------------------------
+  if (performance.getEntriesByType("navigation")[0].type === 'reload') {
+      alert("Page reload detected! Your exam is being terminated.");
+      window.location.replace("/candidate/login");
+      return;
+  }
+  
+  // ---------------------------
   // CSRF Token Management
   // ---------------------------
   function getCookie(name) {
@@ -966,12 +975,22 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   // ---------------------------
-  // Block Alt+Tab and other window switching
-  // ---------------------------
-  document.addEventListener('keydown', (e) => {
-    if (e.key === 'Alt') {
-      altPressed = true;
-    }
+  // Track Meta/Windows key state
+    let metaPressed = false;
+
+    // Block Alt+Tab and other window switching
+    // ---------------------------
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Meta') {
+            metaPressed = true;
+            // Attempt to block Start menu
+            e.preventDefault();
+            e.stopPropagation();
+        }
+        
+        if (e.key === 'Alt') {
+            altPressed = true;
+        }
     
     // Block Alt+Tab, Alt+Shift+Tab, Cmd+Tab (Mac)
     if ((e.altKey && e.key === 'Tab') || 
@@ -991,23 +1010,48 @@ document.addEventListener("DOMContentLoaded", () => {
   });
 
   // Detect window focus loss (tab switching, Alt+Tab, etc.)
-  window.addEventListener('blur', () => {
-    if (!examSubmitted && isWindowFocused) {
-      isWindowFocused = false;
-      setTimeout(() => {
-        if (!isWindowFocused && !examSubmitted) {
-          alert("You switched away from the exam window. Your exam has been terminated.");
-          examSubmitted = true;
-          exitFullScreen();
-          window.location.replace("/candidate/login");
+    window.addEventListener('blur', () => {
+        const fsModal = document.getElementById('fsExitModal');
+        // Force show modal immediately on blur to cover screen
+        if (!examSubmitted && fsModal) {
+             fsModal.style.display = 'block';
         }
-      }, 1000);
-    }
-  });
+        
+        const isWarningShown = fsModal && fsModal.style.display === 'block';
 
-  window.addEventListener('focus', () => {
-    isWindowFocused = true;
-  });
+        if (!examSubmitted && isWindowFocused) {
+            isWindowFocused = false;
+            
+            // If Windows key caused blur, or warning is already shown, do not terminate immediately.
+            // Instead, ensure warning is shown.
+            if (metaPressed || isWarningShown) {
+                return; 
+            }
+
+            setTimeout(() => {
+                // Re-check warning state in case it appeared during timeout
+                const currentModal = document.getElementById('fsExitModal');
+                const currentWarningShown = currentModal && currentModal.style.display === 'block';
+                
+                if (!isWindowFocused && !examSubmitted && !currentWarningShown && !metaPressed) {
+                    // One last chance: show modal instead of terminate
+                    if (currentModal) {
+                        currentModal.style.display = 'block';
+                    } else {
+                        alert("You switched away from the exam window. Your exam has been terminated.");
+                        examSubmitted = true;
+                        exitFullScreen();
+                        window.location.replace("/candidate/login");
+                    }
+                }
+            }, 1000);
+        }
+    });
+
+    window.addEventListener('focus', () => {
+        isWindowFocused = true;
+        metaPressed = false; // Reset Meta key state on return
+    });
 
   // ---------------------------
   // Prevent Cheating Actions
@@ -1037,12 +1081,18 @@ document.addEventListener("DOMContentLoaded", () => {
       
       // For long answer inputs (Part E) - allow normal Enter behavior for new lines
       if (target && target.classList.contains('long-answer-input')) {
-        // Don't prevent default - allow normal textarea behavior
         return;
       }
     }
     
     // Prevent other restricted keys
+    if (e.key === "Escape" || e.key === "F11") {
+        e.preventDefault();
+        e.stopPropagation();
+        const fsModal = document.getElementById('fsExitModal');
+        if(fsModal) fsModal.style.display = 'block';
+    }
+
     if (
       e.key === "Escape" ||
       e.key === "F11" ||
@@ -1064,7 +1114,7 @@ document.addEventListener("DOMContentLoaded", () => {
     ) {
       e.preventDefault();
       e.stopPropagation();
-      alert("This action is disabled during the exam.");
+      // alert("This action is disabled during the exam.");
     }
   });
 
@@ -1259,23 +1309,31 @@ document.addEventListener("DOMContentLoaded", () => {
   // ---------------------------
   // Init (timer + first question + blink style)
   // ---------------------------
-  (function init() {
-    const display = document.getElementById("timer");
-    const duration = {{ duration_seconds|default:0 }};
+  const display = document.getElementById("timer");
+  const duration = {{ duration_seconds|default:0 }};
 
-    if (display && duration > 0) {
-      startTimer(duration, display);
+  if (display && duration > 0) {
+    startTimer(duration, display);
+  }
+
+  // totalQuestions from Django; fall back to 0
+  window.totalQuestions = {{ questions|length|default:0 }};
+
+  if (window.totalQuestions > 0) showQuestion(0);
+
+  const style = document.createElement('style');
+  style.textContent = `@keyframes blink { 50% { opacity: 0.5; } }`;
+  document.head.appendChild(style);
+
+});
+
+// Prevent Page Reload / Close
+window.addEventListener('beforeunload', function (e) {
+    if (!examSubmitted) {
+        e.preventDefault(); 
+        e.returnValue = '';
+        return '';
     }
-
-    // totalQuestions from Django; fall back to 0
-    window.totalQuestions = {{ questions|length|default:0 }};
-
-    if (window.totalQuestions > 0) showQuestion(0);
-
-    const style = document.createElement('style');
-    style.textContent = `@keyframes blink { 50% { opacity: 0.5; } }`;
-    document.head.appendChild(style);
-  })();
 });
 
 // Prevent back/forward navigation
@@ -1388,7 +1446,7 @@ document.addEventListener('keydown', function(e) {
         (e.ctrlKey && e.key === 'U')) {
         e.preventDefault();
         e.stopPropagation();
-        alert("Developer tools are disabled during the exam.");
+        // alert("Developer tools are disabled during the exam.");
         return false;
     }
 });
@@ -1424,7 +1482,7 @@ document.addEventListener('dragstart', function(e) {
 // Block print
 window.addEventListener('beforeprint', function(e) {
     e.preventDefault();
-    alert("Printing is disabled during the exam.");
+    // alert("Printing is disabled during the exam.");
     return false;
 });
 
@@ -1432,7 +1490,7 @@ window.addEventListener('beforeprint', function(e) {
 document.addEventListener('keydown', function(e) {
     if (e.ctrlKey && e.key === 'p') {
         e.preventDefault();
-        alert("Printing is disabled during the exam.");
+        // alert("Printing is disabled during the exam.");
         return false;
     }
 });

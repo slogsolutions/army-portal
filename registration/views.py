@@ -353,7 +353,7 @@ def export_answers_pdf(request, candidate_id):
 def clear_shift_and_start_exam(request):
     """
     Clear the shift assignment and redirect to exam interface.
-    This allows candidates to start the exam regardless of shift timing.
+    Enforces shift timing before allowing start.
     """
     import logging
     logger = logging.getLogger(__name__)
@@ -361,6 +361,12 @@ def clear_shift_and_start_exam(request):
     try:
         candidate = get_object_or_404(CandidateProfile, user=request.user)
         logger.info(f"Starting exam for candidate: {candidate.army_no}")
+        
+        # Enforce shift window
+        if candidate.shift and not candidate.can_start_exam:
+            logger.warning(f"Candidate {candidate.army_no} tried to start exam outside shift window.")
+            messages.error(request, "You cannot start the exam outside the scheduled time window.")
+            return redirect("candidate_dashboard")
         
         # Clear shift to allow exam start
         candidate.shift = None
